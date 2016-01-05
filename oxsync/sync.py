@@ -17,10 +17,14 @@ class OxTaskSync(Sync, OxTasks):
                 if secrets.get('server'):
                     if secrets.get('user'):
                         if secrets.get('password'):
-                            return OxHttpAPI.get_session(server=secrets['server'],
-                                                         user=secrets['user'],
-                                                         password=secrets['password'],
-                                                         logger=_logger)
+                            ox = OxHttpAPI.get_session(server=secrets['server'],
+                                                       user=secrets['user'],
+                                                       password=secrets['password'],
+                                                       logger=_logger)
+                            if ox.authenticated:
+                                return ox
+                            else:
+                                return None
 
         logger = LogAdapter(_logger, {'package': 'oxsync'})
         logger.error('Missing credentials in Open-Xchange options')

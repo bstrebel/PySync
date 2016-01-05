@@ -35,7 +35,7 @@ requests.setLevel(logging.ERROR)
 #logger.setLevel(logging.DEBUG)
 logger.debug("Logging initialized ...")
 
-from secrets import en_dev_token, ox_server, ox_user, ox_password
+from private import en_dev_token, ox_server, ox_user, ox_password
 
 ox = OxHttpAPI.get_session(server=ox_server, user=ox_user, password=ox_password, logger=root)
 en = EnClient.get_client(token=en_dev_token, logger=root)

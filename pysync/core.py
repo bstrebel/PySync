@@ -214,19 +214,20 @@ class PySync(object):
 
         return self._sync
 
-def parse_config(relation, config, logger):
+def parse_config(relation, config, _logger):
 
     from ConfigParser import ConfigParser
 
     from oxsync import OxTaskSync
     from ensync import EnClientSync
 
+    logger = LogAdapter(_logger, {'package': 'config'})
+
     class_map = {
 
         'OxTaskSync': OxTaskSync,
         'EnClientSync': EnClientSync
     }
-
 
     relation_section = 'relation' + '_' + relation
     if config.has_section(relation_section):
@@ -369,16 +370,22 @@ def main():
                 options['config'] = path + config
                 break
 
-    if options['config'] and os.path.isfile(options['config']):
-        logging.config.fileConfig(options['config'])
-        config = ConfigParser(options)
-        config.read(os.path.expanduser(options['config']))
+    if options['config']:
+        options['config'] = os.path.expanduser(options['config'])
+        if os.path.isfile(options['config']):
+            logging.config.fileConfig(options['config'])
+            config = ConfigParser(options)
+            config.read(os.path.expanduser(options['config']))
+        else:
+            logging.critical('Configuration file %s not found!' % (options['config']))
+            exit(1)
     else:
         logging.critical("Missing configuration file!")
         exit(1)
 
     root = logging.getLogger()
-    logger = logging.getLogger('pysync')
+    _logger = logging.getLogger('pysync')
+    logger = LogAdapter(_logger, {'package': 'main'})
 
     # set log level of requests module
     requests = logging.getLogger('requests')
@@ -412,17 +419,25 @@ def main():
 
     for relation in relations:
 
-        left_opts, right_opts, relation_opts = parse_config(relation, config, logger)
+        left_opts, right_opts, relation_opts = parse_config(relation, config, _logger)
 
         # initialise web service sessions via @staticmethod session()
-        left_session = left_opts['class'].session(left_opts, logger)
-        right_session = right_opts['class'].session(right_opts, logger)
+
+        left_session = left_opts['class'].session(left_opts, _logger)
+        if not left_session:
+            logger.critical("Session initialization for %s failed!" % (left_opts['class']))
+            exit(3)
+
+        right_session = right_opts['class'].session(right_opts, _logger)
+        if not right_session:
+            logger.critical("Session initialization for %s failed!" % (right_opts['class']))
+            exit(3)
 
         # TODO: store sessions for shared usage
 
         # initialize sync engine classes
-        left = left_opts['class'](left_session, left_opts, logger=logger)
-        right = right_opts['class'](right_session, right_opts, logger=logger)
+        left = left_opts['class'](left_session, left_opts, logger=_logger)
+        right = right_opts['class'](right_session, right_opts, logger=_logger)
 
         # initialize sync map
         relation_opts['sync'] = {'map': None}
@@ -431,7 +446,7 @@ def main():
                 # TODO: extract map from sync metadata
                 relation_opts['sync'] = json.load(fp)
 
-        relation_opts['sync'] = PySync(left, right, relation_opts, logger).process()
+        relation_opts['sync'] = PySync(left, right, relation_opts, _logger).process()
 
         left.end_session()
         right.end_session()
