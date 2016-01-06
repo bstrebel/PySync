@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time, re, logging
-from pyutils import LogAdapter, strflocal
+from pyutils import LogAdapter, strflocal, get_logger
 
 from pysync import Sync
 from oxapi import *
@@ -26,8 +26,7 @@ class OxTaskSync(Sync, OxTasks):
                             else:
                                 return None
 
-        logger = LogAdapter(_logger, {'package': 'oxsync'})
-        logger.error('Missing credentials in Open-Xchange options')
+        LogAdapter(_logger, {'package': 'oxsync'}).error('Missing credentials in Open-Xchange options')
         return None
 
     @staticmethod
@@ -45,8 +44,10 @@ class OxTaskSync(Sync, OxTasks):
 
     def __init__(self, ox, options, logger=None):
 
-        if logger is None: self._logger = logging.getLogger('oxsync')
-        else: self._logger = logger
+        if logger is None:
+            self._logger = logging.get_logger('oxsync')
+        else:
+            self._logger = logger
         self._adapter = LogAdapter(self._logger, {'package': 'oxsync'})
 
         self._options = options

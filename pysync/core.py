@@ -4,10 +4,10 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-import os, sys, uuid, logging, logging.config, json, codecs, time
+import os, sys, uuid, logging, logging.config, json, codecs, time, pyutils
 
 # sys.path = ['/usr/local/lib/python2.7/dist-packages'] + sys.path
-from pyutils import LogAdapter, strflocal
+from pyutils import Options, LogAdapter, strflocal, get_logger, log_level
 
 # sync engine declarations
 
@@ -15,8 +15,11 @@ class PySync(object):
 
     def __init__(self, left=None, right=None, opts=None, logger=None):
 
-        if logger is None: self._logger = logging.getLogger('pysync')
-        else: self._logger = logger
+        if logger is None:
+            self._logger = get_logger('pysync', logging.DEBUG)
+        else:
+            self._logger = logger
+
         self._adapter = LogAdapter(self._logger, {'package': 'pysync'})
 
         self.logger.debug('Initalizing PySync with %s and %s ...' % (left, right))
@@ -288,8 +291,8 @@ def parse_config(relation, config, _logger):
                     logger.critical('Configuration error: missing [secrets] in %s' % (path))
                     exit(1)
             else:
-                if config.has_option('pysync', 'secrets'):
-                    secrets = config.get('pysync', 'secrets')
+                if config.has_option('options', 'secrets'):
+                    secrets = config.get('options', 'secrets')
                     path = os.path.expanduser(secrets)
                     if os.path.isfile(path):
                         secret = ConfigParser()
@@ -306,7 +309,7 @@ def parse_config(relation, config, _logger):
                         logger.critical('Configuration error: missing secret file %s' % (path))
                         exit(1)
                 else:
-                    logger.critical('Configuration error: missing secrets in [pysync]')
+                    logger.critical('Configuration error: missing secrets in [options]')
                     exit(1)
 
     else:
@@ -332,12 +335,10 @@ def main():
     from ConfigParser import ConfigParser
     from argparse import ArgumentParser
 
-    HOME = os.path.expanduser('~')
-
     options = {
-        'home'  :   HOME,
-        'config':   HOME + '/.pysync.cfg',
-        'secrets':  HOME + '/.pysync.secrets'
+        'secrets': '~/.pysync.secrets',
+        'loglevel_requests': 'ERROR',
+        'loglevel': 'INFO'
     }
 
 # region Command line arguments
@@ -352,63 +353,27 @@ def main():
                         help='debug log level')
 
     args = parser.parse_args()
-    opts = vars(args)
+    opts = Options('PYSYNC', args, options)
+    config = opts.config_parser
+
+    if config is None:
+        LogAdapter(get_logger(), {'package': 'main'}).critical("Missing configuration file!")
+        exit(1)
+
+    logger = LogAdapter(opts.logger, {'package': 'main'})
 
 # endregion
 
 # region Basic configuration and logger settings
 
-    # use alternate configuration file
-    options['config'] = os.getenv('PYSYNC', options['config'])
-    if args.config: options['config'] = args.config
-
-    if not options['config']:
-        script, ext = os.path.splitext(os.path.basename(sys.argv[0]))
-        config = script + ".cfg"
-        for path in ['./', HOME + '/.', '/etc/']:
-            if os.path.isfile(path + config):
-                options['config'] = path + config
-                break
-
-    if options['config']:
-        options['config'] = os.path.expanduser(options['config'])
-        if os.path.isfile(options['config']):
-            logging.config.fileConfig(options['config'])
-            config = ConfigParser(options)
-            config.read(os.path.expanduser(options['config']))
-        else:
-            logging.critical('Configuration file %s not found!' % (options['config']))
-            exit(1)
-    else:
-        logging.critical("Missing configuration file!")
-        exit(1)
-
-    root = logging.getLogger()
-    _logger = logging.getLogger('pysync')
-    logger = LogAdapter(_logger, {'package': 'main'})
-
     # set log level of requests module
     requests = logging.getLogger('requests')
-    requests.setLevel(logging.ERROR)
+    requests.setLevel(log_level(opts.loglevel_requests))
 
-    logger.info('Parsing configuration file %s' % (options['config']))
+    logger.info('Parsing configuration file %s' % (opts.config_file))
 
-    relations = None
-    if args.relations:
-        relations = args.relations
-    else:
-        if config.has_section('pysync'):
-            if config.has_option('pysync', 'relations'):
-                relations = config.get('pysync', 'relations')
-            else:
-                logger.critical('Configuration error: missing relations in [pysync]')
-                exit(1)
-        else:
-            logger.critical('Configuration error: missing section [pysync]')
-            exit(1)
-
-    if relations:
-        relations = list(relations.split(','))
+    if opts.relations:
+        relations = list(opts.relations.split(','))
     else:
         logger.critical('Missing relations!')
         exit(1)
@@ -419,16 +384,16 @@ def main():
 
     for relation in relations:
 
-        left_opts, right_opts, relation_opts = parse_config(relation, config, _logger)
+        left_opts, right_opts, relation_opts = parse_config(relation, config, opts.logger)
 
         # initialise web service sessions via @staticmethod session()
 
-        left_session = left_opts['class'].session(left_opts, _logger)
+        left_session = left_opts['class'].session(left_opts, opts.logger)
         if not left_session:
             logger.critical("Session initialization for %s failed!" % (left_opts['class']))
             exit(3)
 
-        right_session = right_opts['class'].session(right_opts, _logger)
+        right_session = right_opts['class'].session(right_opts, opts.logger)
         if not right_session:
             logger.critical("Session initialization for %s failed!" % (right_opts['class']))
             exit(3)
@@ -436,22 +401,20 @@ def main():
         # TODO: store sessions for shared usage
 
         # initialize sync engine classes
-        left = left_opts['class'](left_session, left_opts, logger=_logger)
-        right = right_opts['class'](right_session, right_opts, logger=_logger)
+        left = left_opts['class'](left_session, left_opts, logger=opts.logger)
+        right = right_opts['class'](right_session, right_opts, logger=opts.logger)
 
         # initialize sync map
         relation_opts['sync'] = {'map': None}
         if os.path.isfile(relation_opts['map']):
             with codecs.open(relation_opts['map'], 'r', encoding='utf-8') as fp:
-                # TODO: extract map from sync metadata
                 relation_opts['sync'] = json.load(fp)
 
-        relation_opts['sync'] = PySync(left, right, relation_opts, _logger).process()
+        relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
 
         left.end_session()
         right.end_session()
 
-        # TODO: add sync metadata
         if relation_opts['sync']:
             relation_opts['sync']['relation'] = relation
             relation_opts['sync']['left'] = '%s' % (left)

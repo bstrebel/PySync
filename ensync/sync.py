@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time, json, re, requests, logging
-from pyutils import LogAdapter, strflocal
+from pyutils import LogAdapter, strflocal, get_logger
 
 from pysync import Sync
 from enapi import *
@@ -18,14 +18,16 @@ class EnClientSync(Sync):
                     return EnClient.get_client(token=options['secrets']['token'],
                                                logger=_logger)
 
-        logger = LogAdapter(_logger, {'package': 'ensync'})
-        logger.error('Missing credentials in Evernote options!')
+        LogAdapter(_logger, {'package': 'ensync'}).error('Missing credentials in Evernote options!')
         return None
 
     def __init__(self, client, options, logger=None):
 
-        if logger is None: self._logger = logging.getLogger('ensync')
-        else: self._logger = logger
+        if logger is None:
+            self._logger = get_logger('ensync', logging.DEBUG)
+        else:
+            self._logger = logger
+
         self._adapter = LogAdapter(self._logger, {'package': 'ensync'})
 
         self._options = options

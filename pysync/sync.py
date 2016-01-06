@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time, logging, json
-from pyutils import LogAdapter, LogFileHandler, strflocal
+from pyutils import LogAdapter, get_logger, strflocal
 
 from abc import ABCMeta, abstractmethod, abstractproperty
 
@@ -12,8 +12,11 @@ class Sync(object):
 
     def __init__(self, logger=None):
 
-        if logger is None: self._logger = logging.getLogger('pysync')
-        else: self._logger = logger
+        if logger is None:
+            self._logger = get_logger('sync', logging.DEBUG)
+        else:
+            self._logger = logger
+
         self._adapter = LogAdapter(self._logger, {'package': 'pysync'})
 
         self._key = None
