@@ -31,6 +31,12 @@ class PySync(object):
         self._new_sync = None
 
     @property
+    def reverse_map(self): return {'left': 'right', 'right': 'left'}
+
+    @property
+    def engine_map(self): return {self._opts['left']: 'left', self._opts['right']: 'right'}
+
+    @property
     def logger(self): return self._adapter
 
     @property
@@ -66,6 +72,77 @@ class PySync(object):
 
         sync[sid][lr] = {'id': id, 'time': tm}
         self.logger.debug('%s: %-5s %s %s %s' % (sid, lr, strflocal(tm), id, key))
+
+    def update(self, update):
+
+        if update.lower() in self.reverse_map:
+            left_right = self.reverse_map.get(update.lower())
+        else:
+            left_right = self.engine_map.get(update)
+            if left_right:
+                left_right = self.reverse_map.get(left_right)
+
+        if left_right:
+
+            engine = self._opts[self.reverse_map.get(left_right)]
+            self.logger.info('Running update for %s on the %s side ...' % (engine, self.reverse_map.get(left_right)))
+
+            for sid in self._sync['map']:
+
+                id = self._sync['map'][sid][left_right]['id']
+
+                self.logger.info('%s: Force update of [%s] at %s' % (id, self._sync['map'][sid]['key'], engine))
+                self.logger.debug('%s: %s' % (id, self._sync['map'][sid][left_right]))
+
+                self._sync['map'][sid][left_right]['time'] = 0L
+
+        else:
+
+            self.logger.warn('Invalid update option [%s] ignored!')
+
+        return self._sync
+
+    def reset(self, reset):
+
+        if reset.lower() in self.reverse_map:
+            left_right = reset.lower()
+        else:
+            left_right = self.engine_map.get(reset)
+            if left_right:
+                left_right = self.reverse_map.get(left_right)
+
+        if left_right:
+
+            engine = self._opts[left_right]
+            self.logger.info('Running reset for %s on the %s side ...' % (engine, left_right))
+
+            if left_right == 'left':
+                sync = self._left
+            else:
+                sync = self._right
+
+            sync.sync_map()
+
+            for sid in self._sync['map']:
+
+                id = self._sync['map'][sid][left_right]['id']
+                self.logger.info('%s: Found [%s] at %s in sync map' % (id, self._sync['map'][sid]['key'], engine))
+
+                if id in sync:
+                    # item exists
+                    item = sync[id]
+                    self.logger.info('%s: Item deleted at %s' % (id, sync))
+                    sync.delete()
+                else:
+                    self.logger.info('%s: Skip missing item at %s' % (id, sync))
+
+            self._sync['map'] = None
+
+        else:
+
+            self.logger.warn('Invalid update option [%s] ignored!')
+
+        return self._sync
 
     def process(self):
 
@@ -330,9 +407,47 @@ def parse_config(relation, config, _logger):
 
     return left, right, rel
 
+
+def lock(relation, opts, _logger):
+
+    logger = LogAdapter(_logger, {'package': 'lock'})
+    map_file = os.path.expanduser(opts['map'])
+    lck_file = os.path.splitext(map_file)[0] + '.lck'
+    if os.path.isfile(lck_file):
+        logger.warning('Relation [%s] locked. Remove %s to unlock synchronization' % (relation, lck_file))
+        return False
+    content = ''
+    if os.path.isfile(map_file):
+        with codecs.open(map_file, 'r', encoding='utf-8') as fp:
+            content = fp.read()
+            fp.close()
+    else:
+        content = '%s\n' % (strflocal())
+
+    logger.info('Locking relation [%s]' % (relation))
+    with codecs.open(lck_file, 'w', encoding='utf-8') as fp:
+        fp.write(content)
+        fp.close()
+        return True
+
+    return False
+
+
+def unlock(relation, opts, _logger):
+
+    logger = LogAdapter(_logger, {'package': 'unlock'})
+    map_file = os.path.expanduser(opts['map'])
+    lck_file = os.path.splitext(map_file)[0] + '.lck'
+    if os.path.isfile(lck_file):
+        logger.info('Unlocking relation [%s]' % (relation))
+        os.remove(lck_file)
+        return True
+    else:
+        logger.warning('Lockfile %s for relation [%s] not found!' % (lck_file, relation))
+        return False
+
 def main():
 
-    from ConfigParser import ConfigParser
     from argparse import ArgumentParser
 
     options = {
@@ -345,7 +460,10 @@ def main():
 
     parser = ArgumentParser(description='PySnc Engine Rev. 0.1 (c) Bernd Strebel')
     parser.add_argument('-c', '--config', type=str, help='use alternate configuration file')
-    parser.add_argument('-r', '--relations', type=str, help='list of pysync relations to process')
+    parser.add_argument('--relations', type=str, help='list of pysync relations to process')
+    parser.add_argument('--rebuild', action='store_true', help='rebuild map file')
+    parser.add_argument('--reset', type=str, help='delete entries and recreate from left/right')
+    parser.add_argument('--update', type=str, help='force update on left/right side')
 
     parser.add_argument('-l', '--loglevel', type=str,
                         choices=['DEBUG', 'INFO', 'WARN', 'WARNING', 'ERROR', 'CRITICAL',
@@ -361,7 +479,6 @@ def main():
         exit(1)
 
     logger = LogAdapter(opts.logger, {'package': 'main'})
-
 # endregion
 
 # region Basic configuration and logger settings
@@ -406,22 +523,39 @@ def main():
 
         # initialize sync map
         relation_opts['sync'] = {'map': None}
-        if os.path.isfile(relation_opts['map']):
-            with codecs.open(relation_opts['map'], 'r', encoding='utf-8') as fp:
-                relation_opts['sync'] = json.load(fp)
 
-        relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
+        if lock(relation, relation_opts, opts.logger):
+
+            if os.path.isfile(relation_opts['map']):
+
+                with codecs.open(relation_opts['map'], 'r', encoding='utf-8') as fp:
+                    relation_opts['sync'] = json.load(fp)
+
+                os.remove(relation_opts['map'])
+
+                if opts.update:
+                    relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).update(opts.update)
+
+                if opts.reset:
+                    relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).reset(opts.reset)
+
+                if opts.rebuild:
+                    relation_opts['sync'] = {'map': None}
+
+            relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
+
+            if relation_opts['sync']:
+                relation_opts['sync']['relation'] = relation
+                relation_opts['sync']['left'] = '%s' % (left)
+                relation_opts['sync']['right'] = '%s' % (right)
+                relation_opts['sync']['time'] = strflocal()
+                with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
+                    json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')
+
+            unlock(relation, relation_opts, opts.logger)
 
         left.end_session()
         right.end_session()
-
-        if relation_opts['sync']:
-            relation_opts['sync']['relation'] = relation
-            relation_opts['sync']['left'] = '%s' % (left)
-            relation_opts['sync']['right'] = '%s' % (right)
-            relation_opts['sync']['time'] = strflocal()
-            with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
-                json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')
 
 # region __Main__
 
