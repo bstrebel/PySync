@@ -10,20 +10,24 @@ class Sync(object):
 
     __metaclass__ = ABCMeta
 
-    def __init__(self, logger=None):
+    def __init__(self, options, logger=None, package='sync'):
 
         if logger is None:
             self._logger = get_logger('sync', logging.DEBUG)
         else:
             self._logger = logger
 
-        self._adapter = LogAdapter(self._logger, {'package': 'pysync'})
+        self._adapter = LogAdapter(self._logger, {'package': package})
 
+        self._options = options
         self._key = None
         self._items = {}
 
     @property
     def logger(self): return self._adapter
+
+    @property
+    def options(self): return self._options
 
     @property
     def items(self): return self._items

@@ -44,19 +44,20 @@ class OxTaskSync(Sync, OxTasks):
 
     def __init__(self, ox, options, logger=None):
 
-        if logger is None:
-            self._logger = logging.get_logger('oxsync')
-        else:
-            self._logger = logger
-        self._adapter = LogAdapter(self._logger, {'package': 'oxsync'})
+        # if logger is None:
+        #     self._logger = logging.get_logger('oxsync')
+        # else:
+        #     self._logger = logger
+        #
+        # self._adapter = LogAdapter(self._logger, {'package': 'oxsync'})
 
-        self._options = options
+        #self._options = options
         self._name = options.get('folder')
         self._id = options.get('id')
         self._key_attribute = options.get('key','title')
-        self._maxsize = 2048
+        self._maxsize = options.get('maxsize', 2048)
 
-        Sync.__init__(self, self._logger)
+        Sync.__init__(self, options, logger, 'oxsync')
         OxTasks.__init__(self, ox)
 
     def __repr__(self):
@@ -73,9 +74,6 @@ class OxTaskSync(Sync, OxTasks):
 
     @maxsize.setter
     def maxsize(self, value): self._maxsize = value
-
-    @property
-    def logger(self): return self._adapter
 
     @property
     def name(self): return self._name
@@ -166,19 +164,22 @@ class OxTaskSync(Sync, OxTasks):
                         if attachment.filename.startswith(note.guid):
                             attachment.detach()
 
-            # always store evernote content as attachment
-            task.upload([{'content': note.html, 'mimetype': 'text/html', 'name': note.guid + '.html'}])
-            task.upload([{'content': note.content, 'mimetype': 'text/xml', 'name': note.guid + '.enml'}])
+            # optional store evernote content as attachment
+            if self.options.get('evernote_html', False):
+                task.upload([{'content': note.html, 'mimetype': 'text/html', 'name': note.guid + '.html'}])
+            if self.options.get('evernote_enml', False):
+                task.upload([{'content': note.content, 'mimetype': 'text/xml', 'name': note.guid + '.enml'}])
 
             # reload and update timestamp
             task = task.load()
 
             # check content
             content = ''
-            if note.attributes.sourceURL:
-                if not note.attributes.sourceURL.startswith(self._ox.server):
-                    self.logger.info('%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
-                    content += "SOURCE: %s\n" % (note.attributes.sourceURL)
+            if self.options.get('evernote_sourceURL', True):
+                if note.attributes.sourceURL:
+                    if not note.attributes.sourceURL.startswith(self._ox.server):
+                        self.logger.info('%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
+                        content += "SOURCE: %s\n" % (note.attributes.sourceURL)
 
             if note.contentLength > self.maxsize:
                 self.logger.info('%s: Evernote content exceeds limit of %d KB!' % (self.class_name, self.maxsize/1024))
@@ -186,27 +187,74 @@ class OxTaskSync(Sync, OxTasks):
             else:
                 content += note.plain
 
-            task._data['note'] = OxTaskSync.enlink_add(content, note.edit_url)
+            if self.options.get('evernote_link', True):
+                task._data['note'] = OxTaskSync.enlink_add(content, note.edit_url)
 
             # process other attributes
-            if note.attributes.reminderTime:
-                task._data['end_date'] = note.attributes.reminderTime
-                self.logger.info('%s: Updating due date from note reminder time (%s)' %
-                                 (self.class_name, strflocal(note.attributes.reminderTime)))
 
-            if note.attributes.reminderDoneTime:
-                task._data['status'] = OxTask.get_status('done')
-                self.logger.info('%s: Updating task status from note done time (%s)' %
-                                 (self.class_name, strflocal(note.attributes.reminderDoneTime)))
+            # always update reminderTime from Evernote
+            newtime = strflocal(note.attributes.reminderTime) if note.attributes.reminderTime is not None else 'None'
+            attribute = self.options.get('evernote_reminderTime', 'end_date')
+            task._data[attribute] = note.attributes.reminderTime
+            self.logger.info('%s: Updating %s from note reminderTime [%s]' %
+                             (self.class_name, attribute, newtime))
 
-            if note.tagGuids:
-                self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
-                task._data['categories'] = note.categories
+            # always update reminderDoneTime and task status
+            oldstatus = int(task._data.get('status', 0))
+            if note.attributes.reminderDoneTime is not None:
+                newtime = strflocal(note.attributes.reminderTime)
+                newstatus = OxTask.get_status('done')
+            else:
+                newtime = None
+                if task._data.get('status') and OxTask.get_status(int(task._data['status'])) == 'Done':
+                    # reset task status
+                    newstatus = int(OxTask.get_status('In progress'))
+                else:
+                    # don't change
+                    newstatus = int(task._data.get('status', 0))
+
+            attribute = self.options.get('evernote_reminderDoneTime', 'date_completed')
+            task._data[attribute] = note.attributes.reminderDoneTime
+            self.logger.info('%s: Updating task %s from note reminderDoneTime [%s]' %
+                             (self.class_name, attribute, newtime))
+
+            task._data['status'] = newstatus
+
+            if newstatus != oldstatus:
+                self.logger.info('%s: Updating task status from [%s] to [%s]' %
+                                 (self.class_name, OxTask.get_status(oldstatus), OxTask.get_status(newstatus)))
+
+            # process categories
+            self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
+
+            status_prefix = None
+            priority_prefix = None
+
+            if self.options.get('evernote_tag_status'):
+                status_prefix = unicode(self.options['evernote_tag_status'])
+            if self.options.get('evernote_tag_priority'):
+                priority_prefix = unicode(self.options['evernote_tag_priority'])
+
+            categories = []
+            for tag in note.categories.split(','):
+                if status_prefix and tag.startswith(status_prefix):
+                    task._data['status'] = OxTask.get_status(tag[1:].lower())
+                    self.logger.info('%s: Updating task status to [%s]' % (self.class_name, OxTask.get_status(int(task.status))))
+                elif priority_prefix and tag.startswith(priority_prefix):
+                    task._data['priority'] = OxTask.get_priority(tag[1:].lower())
+                    self.logger.info('%s: Updating task priority to [%s]' % (self.class_name, OxTask.get_priority(int(task.priority))))
+                else:
+                    categories.append(tag)
+
+            # OxTask @categories.setter
+            task.categories = categories
 
         else:
             # unknown sync object
             return None
 
+        task._data['title'] = note.title
+        task._data['full_time'] = False
         task = task.update()
         # timestamp from api request is UTC: don't add self._utc_offset
         self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(task.timestamp)))

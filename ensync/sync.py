@@ -23,14 +23,6 @@ class EnClientSync(Sync):
 
     def __init__(self, client, options, logger=None):
 
-        if logger is None:
-            self._logger = get_logger('ensync', logging.DEBUG)
-        else:
-            self._logger = logger
-
-        self._adapter = LogAdapter(self._logger, {'package': 'ensync'})
-
-        self._options = options
         self._name = options.get('notebook')
         self._guid = options.get('guid')
         self._key_attribute = options.get('key')
@@ -42,7 +34,7 @@ class EnClientSync(Sync):
         else:
             self._client = EnClient.get_client(**client)
 
-        Sync.__init__(self, self._logger)
+        Sync.__init__(self, options, logger, 'ensync')
 
     def __repr__(self):
         return 'EnClient:%s' % (self._name)
@@ -58,9 +50,6 @@ class EnClientSync(Sync):
 
     @maxsize.setter
     def maxsize(self, value): self._maxsize = value
-
-    @property
-    def logger(self): return self._adapter
 
     @property
     def client(self): return self._client
@@ -138,10 +127,14 @@ class EnClientSync(Sync):
             if not update:
                 self.logger.info('%s: Updating note content' % (self.class_name))
                 note.content = ENMLOfPlainText(OxTaskSync.enlink_remove(task.note))
-                if note.attributes.sourceURL is None:
-                    note.attributes.sourceURL = task.get_url()
-                if note.attributes.sourceApplication is None:
-                    note.attributes.sourceApplication = 'OxPySync'
+                if self.options.get('ox_sourceURL', True):
+                    if note.attributes.sourceURL is None:
+                        note.attributes.sourceURL = task.get_url()
+                if self.options.get('ox_sourceApplication'):
+                    if note.attributes.sourceApplication is None:
+                        note.attributes.sourceApplication = self.options.get('ox_sourceApplication', 'OxPySync')
+                if self.options.get('ox_author'):
+                    note.attributes.author = self.options.get('ox_author')
             else:
                 preserve = None
                 if note.resources:
@@ -159,20 +152,54 @@ class EnClientSync(Sync):
                     note.content = ENMLOfPlainText(OxTaskSync.enlink_remove(task.note))
                     self.logger.info('%s: Updating note content' % (self.class_name))
 
-            if task.end_date:
-                note.attributes.reminderTime = task.end_date
-                self.logger.info('%s: Updating reminder time from due date (%s)' % (self.class_name, strflocal(task.end_date)))
+            # always update reminderTime
+            attribute = self.options.get('ox_reminderTime','end_time')
+            if task._data.get(attribute):
+                note.attributes.reminderTime = task._data.get(attribute)
+                reminderTime = strflocal(task._data.get(attribute))
+            else:
+                note.attributes.reminderTime = None
+                note.attributes.reminderOrder = None
+                reminderTime = 'None'
+            self.logger.info('%s: Updating note reminderTime from %s [%s]' % (self.class_name, attribute, reminderTime))
 
+            # update note reminder status from task status
             if OxTask.get_status(task.status) == 'done':
-                local = time.time()
-                note.attributes.reminderDoneTime = long(local * 1000)
-                note.attributes.reminderTime = 0L
-                self.logger.info('%s: Updating reminder done time from localtime (%s)' % (self.class_name, strflocal(local)))
 
+                if task._data.get('date_completed') is None:
+                    local = time.time()
+                    completed = long(local * 1000)
+                else:
+                    completed = task.date_completed
+
+                note.attributes.reminderDoneTime = completed
+                note.attributes.reminderTime = None
+                note.attributes.reminderOrder = None
+
+                self.logger.info('%s: Updating reminder status from done task [%s]' %
+                                 (self.class_name, strflocal(completed)))
+
+            # process categories and tags
             if task.categories:
                 self.logger.info('%s: Updating tags from categories %s' % (self.class_name, task.categories))
                 note.tagGuids = []
-                note.tagNames = task.tag_names('ascii')
+                note.tagNames = task.tagNames
+            else:
+                self.logger.info('%s: Removing tags from note' % (self.class_name))
+                note.tagGuids = []
+                note.tagNames = []
+
+            if self.options.get('ox_status_tag'):
+                if task.status:
+                    tag = self.options['ox_status_tag'] + OxTask.get_status(int(task.status))
+                    self.logger.info('%s: Add status tag %s to note' % (self.class_name, tag))
+                    note.tagNames.append(tag)
+                
+            if self.options.get('ox_priority_tag'):
+                if task.priority:
+                    tag = self.options['ox_priority_tag'] + OxTask.get_priority(int(task.priority))
+                    self.logger.info('%s: Add priority tag %s to note' % (self.class_name, tag))
+                    note.tagNames.append(tag)
 
         else:
             # invalid sync object

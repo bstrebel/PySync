@@ -405,7 +405,7 @@ def parse_config(relation, config, _logger):
             logger.critical('configuration error: missing class tag')
             exit(1)
 
-    return left, right, rel
+    return Options(left), Options(right), Options(rel)
 
 
 def lock(relation, opts, _logger):
@@ -471,7 +471,7 @@ def main():
                         help='debug log level')
 
     args = parser.parse_args()
-    opts = Options('PYSYNC', args, options)
+    opts = Options(options, args, '[config]', prefix='PYSYNC')
     config = opts.config_parser
 
     if config is None:
