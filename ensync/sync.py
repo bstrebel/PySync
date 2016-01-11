@@ -172,7 +172,7 @@ class EnClientSync(Sync):
             self.logger.info('%s: Updating note reminderTime from %s [%s]' % (self.class_name, attribute, reminderTime))
 
             # update note reminder status from task status
-            if OxTask.get_status(task.status) == 'done':
+            if OxTask.get_status(task.status) == 'Done':
 
                 if task._data.get('date_completed') is None:
                     local = time.time()

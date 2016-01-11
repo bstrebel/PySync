@@ -107,12 +107,17 @@ class OxTaskSync(Sync, OxTasks):
 
     def delete(self):
 
-        if self.options.get('tasks_archive_folder'):
-            target = self._ox.get_folder('tasks', self.options.get('OxTasksArchiveFolder'))
-            self._ox.move_task(self.folder, self.key, target)
-        else:
-            self._ox.delete_task(self.folder, self.key)
+        task = self._ox.get_task(self.folder, self._key)
 
+        if task.status and task.status == OxTask.get_status('Done'):
+            if self.options.get('tasks_archive_folder'):
+                target = self._ox.get_folder('tasks', self.options.get('tasks_archive_folder'))
+                if target:
+                    self._ox.move_task(self.folder, self.key, target)
+                    Sync.delete(self)
+                    return
+
+        self._ox.delete_task(self.folder, self.key)
         Sync.delete(self)
 
     def get(self):
@@ -233,15 +238,15 @@ class OxTaskSync(Sync, OxTasks):
             self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
 
             status_prefix = None
-            status_new = task.status
             status_now = task.status
+            status_new = status_now
             if self.options.get('evernote_tag_status'):
                 status_prefix = unicode(self.options['evernote_tag_status'])
                 status_new = OxTask.get_status('Not started')
 
             priority_prefix = None
-            priority_new = int(task.priority)
-            priority_now = int(task.priority)
+            priority_now = int(task.priority) if task.priority is not None else None
+            priority_new = priority_now
             if self.options.get('evernote_tag_priority'):
                 priority_prefix = unicode(self.options['evernote_tag_priority'])
                 priority_new = OxTask.get_priority('None')
