@@ -44,30 +44,29 @@ class OxTaskSync(Sync, OxTasks):
 
     def __init__(self, ox, options, logger=None):
 
-        # if logger is None:
-        #     self._logger = logging.get_logger('oxsync')
-        # else:
-        #     self._logger = logger
-        #
-        # self._adapter = LogAdapter(self._logger, {'package': 'oxsync'})
-
-        #self._options = options
-        self._name = options.get('folder')
-        self._id = options.get('id')
+        #self._name = options.get('folder')
+        #self._id = options.get('id')
         self._key_attribute = options.get('key','title')
         self._maxsize = options.get('maxsize', 2048)
+        self._folder = None
 
         Sync.__init__(self, options, logger, 'oxsync')
         OxTasks.__init__(self, ox)
 
-    def __repr__(self):
-        return 'OxTask:%s' % (self._name)
+        if options.get('signature') is None:
+            self._folder = self._ox.get_folder('tasks', options.get('folder'))
+            signature = {'label': options.get('label')}
+            self._folder = self._ox.get_folder('tasks', options.get('folder'))
+            signature['folder'] = self._folder.title
+            signature['id'] = self._folder.id
+            self.options.update({'signature': signature})
 
-    def __str__(self):
-        return 'OxTask:%s' % (self._name)
+    def __repr__(self): return self.label
+
+    def __str__(self): return self.label
 
     @property
-    def class_name(self): return 'OxTask:%s' % (self._name)
+    def class_name(self): return self.label
 
     @property
     def maxsize(self): return self._maxsize
@@ -76,21 +75,21 @@ class OxTaskSync(Sync, OxTasks):
     def maxsize(self, value): self._maxsize = value
 
     @property
-    def name(self): return self._name
+    def name(self): return self.signature.get('folder')
 
     @property
-    def id(self): return self._id
+    def id(self): return self.signature.get('id')
 
     @property
-    def folder(self): return self._id if self._id else self._name
+    def folder(self): return self.id if self.id else self.name
 
     def end_session(self):
         return self._ox.logout()
 
     def sync_map(self):
         folder = self._ox.get_folder('tasks', self.folder)
-        self._name = folder.title
-        self._id = folder.id
+        #self._name = folder.title
+        #self._id = folder.id
         if folder:
             columns = [OxTask.map['id'], OxTask.map['last_modified'], OxTask.map[self._key_attribute]]
             params = {'folder': folder.id,
@@ -107,7 +106,13 @@ class OxTaskSync(Sync, OxTasks):
         return None
 
     def delete(self):
-        self._ox.delete_task(self.folder, self.key)
+
+        if self.options.get('tasks_archive_folder'):
+            target = self._ox.get_folder('tasks', self.options.get('OxTasksArchiveFolder'))
+            self._ox.move_task(self.folder, self.key, target)
+        else:
+            self._ox.delete_task(self.folder, self.key)
+
         Sync.delete(self)
 
     def get(self):

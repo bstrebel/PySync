@@ -533,8 +533,11 @@ def main():
 
                 os.remove(relation_opts['map'])
 
-                if opts.update:
-                    relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).update(opts.update)
+                left.options.update({'signature': relation_opts['sync']['left']})
+                right.options.update({'signature': relation_opts['sync']['right']})
+
+                if opts['update']:
+                    relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).update(opts['update'])
 
                 if opts.reset:
                     relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).reset(opts.reset)
@@ -546,8 +549,8 @@ def main():
 
             if relation_opts['sync']:
                 relation_opts['sync']['relation'] = relation
-                relation_opts['sync']['left'] = '%s' % (left)
-                relation_opts['sync']['right'] = '%s' % (right)
+                relation_opts['sync']['left'] = left.options.signature
+                relation_opts['sync']['right'] = right.options.signature
                 relation_opts['sync']['time'] = strflocal()
                 with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
                     json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')

@@ -23,8 +23,8 @@ class EnClientSync(Sync):
 
     def __init__(self, client, options, logger=None):
 
-        self._name = options.get('notebook')
-        self._guid = options.get('guid')
+        #self._name = options.get('notebook')
+        #self._guid = options.get('guid')
         self._key_attribute = options.get('key')
         self._book = None
         self._maxsize = None
@@ -36,14 +36,22 @@ class EnClientSync(Sync):
 
         Sync.__init__(self, options, logger, 'ensync')
 
-    def __repr__(self):
-        return 'EnClient:%s' % (self._name)
+        if options.get('signature') is None:
+            self._book = self._client.notebook(options.get('notebook'))
+            signature = {'label': options.get('label')}
+            signature['notebook'] = self._book.name
+            signature['guid'] = self._book.guid
+            self.options.update({'signature': signature})
 
-    def __str__(self):
-        return 'EnClient:%s' % (self._name)
+    def __repr__(self): return self.label
+    # return 'EnClient:%s' % (self._name)
+
+    def __str__(self): return self.label
+    # return 'EnClient:%s' % (self._name)
 
     @property
-    def class_name(self): return 'EnClient:%s' % (self._name)
+    def class_name(self): return self.label
+    # return 'EnClient:%s' % (self._name)
 
     @property
     def maxsize(self): return self._maxsize
@@ -55,19 +63,19 @@ class EnClientSync(Sync):
     def client(self): return self._client
 
     @property
-    def guid(self): return self._guid
+    def guid(self): return self.signature.get('guid')
 
     @property
-    def name(self): return self._name
+    def name(self): return self.signature.get('notebook')
 
     def sync_map(self):
         # from enapi import EnBook
         if self.guid:
             self._book = EnBook.initialize(self._client.note_store.getNotebook(self.guid))
-            self._name = self._book.name
+            #self._name = self._book.name
         else:
             self._book = self._client.notebook(self._name)
-            self._guid = self._book.guid
+            #self._guid = self._book.guid
 
         self._items = {}
         for key in self._book:

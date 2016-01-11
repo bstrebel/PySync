@@ -30,6 +30,12 @@ class Sync(object):
     def options(self): return self._options
 
     @property
+    def label(self): return self._options.get('label')
+
+    @property
+    def signature(self): return self._options.get('signature')
+
+    @property
     def items(self): return self._items
 
     def _add_item(self, id, tm, key):
