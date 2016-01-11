@@ -209,6 +209,19 @@ class EnClientSync(Sync):
                     self.logger.info('%s: Add priority tag %s to note' % (self.class_name, tag))
                     note.tagNames.append(tag)
 
+            if self.options.get('ox_private_tag'):
+                private_tag = self.options['ox_private_tag']
+                note_private_tag = False
+                if private_tag in note.tagNames:
+                    note_private_tag = True
+                    note.tagNames.remove(private_tag)
+                if task.private_flag:
+                    note.tagNames.append(private_tag)
+                    if not note_private_tag:
+                        self.logger.info('%s: Add private tag %s to note' % (self.class_name, private_tag))
+                else:
+                    if note_private_tag:
+                        self.logger.info('%s: Remove private tag %s from note' % (self.class_name, private_tag))
         else:
             # invalid sync object
             return None

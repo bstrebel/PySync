@@ -233,23 +233,58 @@ class OxTaskSync(Sync, OxTasks):
             self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
 
             status_prefix = None
-            priority_prefix = None
-
+            status_new = task.status
+            status_now = task.status
             if self.options.get('evernote_tag_status'):
                 status_prefix = unicode(self.options['evernote_tag_status'])
+                status_new = OxTask.get_status('Not started')
+
+            priority_prefix = None
+            priority_new = int(task.priority)
+            priority_now = int(task.priority)
             if self.options.get('evernote_tag_priority'):
                 priority_prefix = unicode(self.options['evernote_tag_priority'])
+                priority_new = OxTask.get_priority('None')
+
+            private_tag = None
+            private_new = task.private_flag
+            private_now = task.private_flag
+            if self.options.get('evernote_tag_private'):
+                private_tag = unicode(self.options['evernote_tag_private'])
+                private_new = False
 
             categories = []
             for tag in note.categories.split(','):
+
                 if status_prefix and tag.startswith(status_prefix):
-                    task._data['status'] = OxTask.get_status(tag[1:].lower())
-                    self.logger.info('%s: Updating task status to [%s]' % (self.class_name, OxTask.get_status(int(task.status))))
+
+                    status_new = OxTask.get_status(tag[1:].lower())
+                    if status_now != status_new:
+                        self.logger.info('%s: Updating task status to [%s]' % (self.class_name, OxTask.get_status(status_new)))
+
                 elif priority_prefix and tag.startswith(priority_prefix):
-                    task._data['priority'] = OxTask.get_priority(tag[1:].lower())
-                    self.logger.info('%s: Updating task priority to [%s]' % (self.class_name, OxTask.get_priority(int(task.priority))))
+
+                    priority_new = OxTask.get_priority(tag[1:].lower())
+                    if priority_now != priority_new:
+                        self.logger.info('%s: Updating task priority to [%s]' % (self.class_name, OxTask.get_priority(priority_new)))
+
+                elif private_tag and tag == private_tag:
+
+                        private_new = True
+                        if private_now != private_new:
+                            self.logger.info('%s: Updating private flag to [%s]' % (self.class_name, private_new))
                 else:
                     categories.append(tag)
+
+            task._data['status'] = status_new
+
+            if priority_new == 0:
+                # undocumented OX magic
+                task._data['priority'] = 'null'
+            else:
+                task._data['priority'] = str(priority_new)
+
+            task._data['private_flag'] = private_new
 
             # OxTask @categories.setter
             task.categories = categories
