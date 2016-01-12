@@ -105,7 +105,9 @@ class OxTaskSync(Sync, OxTasks):
                 # to UTC by adding self._ox.utc_offset
                 if len(raw) == 3:
                     if self._check_filter(raw):
-                        self._add_item(raw[0], raw[1] + self._ox.utc_offset, raw[2])
+                        item = {'time': raw[1] + self._ox.utc_offset, 'key': raw[2]}
+                        self._add_item(raw[0], item)
+                        # self._add_item(raw[0], raw[1] + self._ox.utc_offset, raw[2])
             return {'items': self.items, 'name': self.name, 'id': self.id}
         return None
 

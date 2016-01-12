@@ -85,7 +85,9 @@ class EnClientSync(Sync):
             nmd = self._book.get_note(key)
             key = eval('nmd.' + self._key_attribute)
             if self._check_filter(nmd):
-                self._add_item(nmd.guid, nmd.updated, key)
+                item = {'time': nmd.updated, 'key': key.decode('utf-8'), 'extra': 'EXTRA'}
+                self._add_item(nmd.guid, item)
+                #self._add_item(nmd.guid, nmd.updated, key)
         return {'items': self.items, 'name': self.name, 'id': self.guid}
 
     def changed(self, sync):
