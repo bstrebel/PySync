@@ -68,6 +68,9 @@ class EnClientSync(Sync):
     @property
     def name(self): return self.signature.get('notebook')
 
+    def _check_filter(self, item):
+        return True
+
     def sync_map(self):
         # from enapi import EnBook
         if self.guid:
@@ -80,8 +83,13 @@ class EnClientSync(Sync):
         self._items = {}
         for key in self._book:
             nmd = self._book.get_note(key)
-            self._add_item(nmd.guid, nmd.updated, eval('nmd.' + self._key_attribute))
+            key = eval('nmd.' + self._key_attribute)
+            if self._check_filter(nmd):
+                self._add_item(nmd.guid, nmd.updated, key)
         return {'items': self.items, 'name': self.name, 'id': self.guid}
+
+    def changed(self, sync):
+        return Sync.changed(self, sync)
 
     def get(self):
         #note = self._client.note_store.getNote(guid, True, True, True, True)

@@ -237,9 +237,14 @@ class PySync(object):
                 ltime =  self.sync[sid]['left']['time']
                 rtime =  self.sync[sid]['right']['time']
 
-                if ltime < litem['time']:
+                lsync = self.sync[sid]['left']
+                rsync = self.sync[sid]['right']
+
+                #if ltime < litem['time']:
+                if left.changed(lsync):
                     self.logger.info('%s: Item changed at left %s' % (sid, self.left))
-                    if rtime < ritem['time']:
+                    #if rtime < ritem['time']:
+                    if right.changed(rsync):
                         self.logger.info('%s: Item also changed at right %s' % (sid, self.right))
                         if litem['time'] < ritem['time']:
                             self.logger.info('%s: Item newer at right %s ' % (sid, self.right))
@@ -253,7 +258,8 @@ class PySync(object):
                         self.logger.info('%s: Updating right item at %s' % (sid, self.right))
                         ritem['time'] = right.update(left)
                 else:
-                    if rtime < ritem['time']:
+                    #if rtime < ritem['time']:
+                    if right.changed(rsync):
                         self.logger.info('%s: Item changed at right %s' % (sid, self.right))
                         self.logger.info('%s: Updating left item at %s' % (sid, self.left))
                         litem['time'] = left.update(right)

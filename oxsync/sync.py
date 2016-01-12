@@ -86,6 +86,9 @@ class OxTaskSync(Sync, OxTasks):
     def end_session(self):
         return self._ox.logout()
 
+    def _check_filter(self, item):
+        return True
+
     def sync_map(self):
         folder = self._ox.get_folder('tasks', self.folder)
         #self._name = folder.title
@@ -101,9 +104,13 @@ class OxTaskSync(Sync, OxTasks):
                 # timestamp from raw[1] is local time and must be changed
                 # to UTC by adding self._ox.utc_offset
                 if len(raw) == 3:
-                    self._add_item(raw[0], raw[1] + self._ox.utc_offset, raw[2])
+                    if self._check_filter(raw):
+                        self._add_item(raw[0], raw[1] + self._ox.utc_offset, raw[2])
             return {'items': self.items, 'name': self.name, 'id': self.id}
         return None
+
+    def changed(self, sync):
+        return Sync.changed(self, sync)
 
     def delete(self):
 
@@ -297,6 +304,8 @@ class OxTaskSync(Sync, OxTasks):
         else:
             # unknown sync object
             return None
+
+
 
         task._data['title'] = note.title
         task._data['full_time'] = False

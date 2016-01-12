@@ -84,6 +84,10 @@ class Sync(object):
         return None
 
     @abstractmethod
+    def _check_filter(self, item):
+        return True
+
+    @abstractmethod
     def sync_map(self, what, compare):
         return None
 
@@ -103,3 +107,11 @@ class Sync(object):
     def delete(self):
         self.logger.info('%s: Delete %s' % (self.class_name, self.dump_item()))
         del self._items[self.key]
+
+    @abstractmethod
+    def changed(self, sync):
+        item = self._items.get(self._key)
+        if sync['time'] < item['time']:
+            return True
+        else:
+            return False
