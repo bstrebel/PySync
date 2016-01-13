@@ -25,7 +25,7 @@ class EnClientSync(Sync):
 
         #self._name = options.get('notebook')
         #self._guid = options.get('guid')
-        self._key_attribute = options.get('key')
+        self._key_attribute = options.get('key','title')
         self._book = None
         self._maxsize = None
 
@@ -83,17 +83,19 @@ class EnClientSync(Sync):
         self._items = {}
         for key in self._book:
             nmd = self._book.get_note(key)
-            key = eval('nmd.' + self._key_attribute)
+            #key = eval('nmd.' + self._key_attribute)
+            key = nmd[self._key_attribute].decode('utf-8')
             if self._check_filter(nmd):
-                item = {'id': nmd.guid, 'time': nmd.updated, 'key': key.decode('utf-8'), 'extra': 'EXTRA'}
+                item = {'id': nmd.guid, 'time': nmd.updated, 'key': key, 'extra': 'EXTRA'}
                 self._add_item(nmd.guid, item)
 
         return {'items': self.items, 'name': self.name, 'id': self.guid}
 
     def map_item(self, ref=None):
         if isinstance(ref, EnNote):
-            key = eval('ref.' + self._key_attribute)
-            return {'id': ref.guid, 'key': key.decode('utf-8'), 'time': ref.updated, 'extra': 'EXTRA'}
+            #key = eval('ref.' + self._key_attribute)
+            key = ref[self._key_attribute].decode('utf-8')
+            return {'id': ref.guid, 'key': key, 'time': ref.updated, 'extra': 'EXTRA'}
 
         key = ref if ref is not None else self._key
         item = self._items.get(key)
