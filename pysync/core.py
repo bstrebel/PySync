@@ -51,27 +51,21 @@ class PySync(object):
     @sync.setter
     def sync(self, value): self._sync['map'] = value
 
-    def _add_item(self, sid, lr, id, tm, key=None):
+    def _add_item(self, sid, lr, item):
 
-        from pysync import Sync
-
-        if self._new_sync is None:
-            sync = self.sync
-        else:
-            sync = self._new_sync
-        if sid not in sync:
-            sync[sid] = {}
-
+        sync = self.sync if self._new_sync is None else self._new_sync
+        if sid not in sync: sync[sid] = {}
+        key = item.get('key')
         if key is not None:
-            if isinstance(key, str):
-                sync[sid]['key'] = key.decode('utf-8')
+            if 'key' in sync[sid]:
+                if key != sync[sid]['key']:
+                    self.logger.warning('%s: Found different keys [%s] <> [%s]' % (sid, key, sync[sid]['key']))
             else:
                 sync[sid]['key'] = key
 
-            # sync[sid]['key'] = key.encode('utf-8')
-
-        sync[sid][lr] = {'id': id, 'time': tm}
-        self.logger.debug('%s: %-5s %s %s %s' % (sid, lr, strflocal(tm), id, key))
+            del(item['key'])
+        sync[sid][lr] = item
+        self.logger.debug('%s: %-5s %s %s' % (sid, lr, key, item))
 
     def update(self, update):
 
@@ -98,7 +92,7 @@ class PySync(object):
 
         else:
 
-            self.logger.warn('Invalid update option [%s] ignored!')
+            self.logger.warning('Invalid update option [%s] ignored!')
 
         return self._sync
 
@@ -140,7 +134,7 @@ class PySync(object):
 
         else:
 
-            self.logger.warn('Invalid update option [%s] ignored!')
+            self.logger.warning('Invalid update option [%s] ignored!')
 
         return self._sync
 
@@ -166,19 +160,19 @@ class PySync(object):
 
                 self.logger.info('Checking %s' % (self.left))
                 sid = str(uuid.uuid1())
-                self._add_item(sid, 'left', key, left[key]['time'], left[key]['key'])
+                self._add_item(sid, 'left', left.map_item(key))
 
                 # find items by key
                 guid = right.find_key(left[key]['key'])
                 if guid:
                     found[guid] = True
                     self.logger.info('Found matching item [%s] at %s' % (left[key]['key'], self.right))
-                    self._add_item(sid, 'right', guid, right[guid]['time'], right[guid]['key'])
+                    self._add_item(sid, 'right', right.map_item(guid))
                 else:
                     # create missing item on right side
                     self.logger.info('Create missing item [%s] at %s' % (left[key]['key'], self.right))
-                    new_id, new_time, title = right.create(left)
-                    self._add_item(sid, 'right', new_id, new_time, title)
+                    item = right.create(left)
+                    self._add_item(sid, 'right', item)
 
             for key in right:
 
@@ -188,9 +182,9 @@ class PySync(object):
                     # new key on the right side
                     sid = str(uuid.uuid1())
                     self.logger.info('Create missing item [%s] at %s' % (right[key]['key'], self.left))
-                    self._add_item(sid, 'right', key, right[key]['time'], right[key]['key'])
-                    new_id, new_time, title = left.create(right)
-                    self._add_item(sid, 'left', new_id, new_time, title)
+                    self._add_item(sid, 'right', right.map_item(key))
+                    item = left.create(right)
+                    self._add_item(sid, 'left', item)
 
             # return self.sync
 
@@ -234,38 +228,35 @@ class PySync(object):
                     continue
 
                 # both items exists: compare and update sync map
-                ltime =  self.sync[sid]['left']['time']
-                rtime =  self.sync[sid]['right']['time']
+                # ltime =  self.sync[sid]['left']['time']
+                # rtime =  self.sync[sid]['right']['time']
 
                 lsync = self.sync[sid]['left']
                 rsync = self.sync[sid]['right']
 
-                #if ltime < litem['time']:
                 if left.changed(lsync):
                     self.logger.info('%s: Item changed at left %s' % (sid, self.left))
-                    #if rtime < ritem['time']:
                     if right.changed(rsync):
                         self.logger.info('%s: Item also changed at right %s' % (sid, self.right))
                         if litem['time'] < ritem['time']:
                             self.logger.info('%s: Item newer at right %s ' % (sid, self.right))
                             self.logger.info('%s: Updating left item at %s' % (sid, self.left))
-                            litem['time'] = left.update(right)
+                            litem = left.update(right)
                         else:
                             self.logger.info('%s: Item newer at left %s ' % (sid, self.left))
                             self.logger.info('%s: Updating right item at %s' % (sid, self.right))
-                            ritem['time'] = right.update(left)
+                            ritem  = right.update(left)
                     else:
                         self.logger.info('%s: Updating right item at %s' % (sid, self.right))
-                        ritem['time'] = right.update(left)
+                        ritem = right.update(left)
                 else:
-                    #if rtime < ritem['time']:
                     if right.changed(rsync):
                         self.logger.info('%s: Item changed at right %s' % (sid, self.right))
                         self.logger.info('%s: Updating left item at %s' % (sid, self.left))
-                        litem['time'] = left.update(right)
+                        litem = left.update(right)
 
-                self._add_item(sid, 'left', lid, litem['time'], litem['key'])
-                self._add_item(sid, 'right', rid, ritem['time'], ritem['key'])
+                self._add_item(sid, 'left', litem)
+                self._add_item(sid, 'right', right.map_item())
 
                 del left[lid]
                 del right[rid]
@@ -273,11 +264,11 @@ class PySync(object):
             self.logger.info('Checking for new items at %s' % (self.left))
             for key in left:
                 # new items on the left side
-                new_id, new_time, title = right.create(left)
+                ritem = right.create(left)
 
                 sid = str(uuid.uuid1())
-                self._add_item(sid, 'left', key, left[key]['time'], left[key]['key'])
-                self._add_item(sid, 'right', new_id, new_time, title)
+                self._add_item(sid, 'left', left.map_item())
+                self._add_item(sid, 'right', ritem)
 
                 self.logger.info('%s: [%s]' % (sid, self._new_sync[sid]['key']) )
                 self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
@@ -286,11 +277,11 @@ class PySync(object):
             self.logger.info('Checking for new items at %s' % (self.right))
             for key in right:
                 # new items on the left side
-                new_id, new_time, title = left.create(right)
+                litem = left.create(right)
 
                 sid = str(uuid.uuid1())
-                self._add_item(sid, 'right', key, right[key]['time'], right[key]['key'])
-                self._add_item(sid, 'left', new_id, new_time, title)
+                self._add_item(sid, 'right', right.map_item())
+                self._add_item(sid, 'left', litem)
 
                 self.logger.info('%s: [%s]' % (sid, self._new_sync[sid]['key']) )
                 self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))

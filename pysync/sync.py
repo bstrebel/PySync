@@ -39,17 +39,17 @@ class Sync(object):
     def items(self): return self._items
 
     def _add_item(self, id, item):
-
             self._items[id] = item
-            #self._items[id]['time'] = tm
+            self.logger.debug('%s %s %s' % (self.class_name, id, item))
 
-            # if isinstance(key, str):
-            #     self._items[id]['key'] = key.decode('utf-8')
-            # else:
-            #     self._items[id]['key'] = key
-
-
-            # self.logger.debug('%s %s %s %s' % (self.class_name, id, strflocal(tm), self._items[id]['key']))
+    @abstractmethod
+    def map_item(self, key=None):
+        if key is None: key = self._key
+        item = self._items.get(key)
+        if item:
+            return {'id': item['id'], 'key': item['key'], 'time': item['time']}
+        else:
+            return None
 
     def get_item(self, key=None):
         if key is None:

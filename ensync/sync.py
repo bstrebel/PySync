@@ -85,10 +85,22 @@ class EnClientSync(Sync):
             nmd = self._book.get_note(key)
             key = eval('nmd.' + self._key_attribute)
             if self._check_filter(nmd):
-                item = {'time': nmd.updated, 'key': key.decode('utf-8'), 'extra': 'EXTRA'}
+                item = {'id': nmd.guid, 'time': nmd.updated, 'key': key.decode('utf-8'), 'extra': 'EXTRA'}
                 self._add_item(nmd.guid, item)
-                #self._add_item(nmd.guid, nmd.updated, key)
+
         return {'items': self.items, 'name': self.name, 'id': self.guid}
+
+    def map_item(self, ref=None):
+        if isinstance(ref, EnNote):
+            key = eval('ref.' + self._key_attribute)
+            return {'id': ref.guid, 'key': key.decode('utf-8'), 'time': ref.updated, 'extra': 'EXTRA'}
+
+        key = ref if ref is not None else self._key
+        item = self._items.get(key)
+        if item:
+            return {'id': item['id'], 'key': item['key'], 'time': item['time'], 'extra': 'EXTRA'}
+        else:
+            return None
 
     def changed(self, sync):
         return Sync.changed(self, sync)
@@ -108,8 +120,7 @@ class EnClientSync(Sync):
         note = EnNote(title=other.title)
         self.logger.info('%s: Creating note [%s] from %s' % (self.class_name, other.title, other.__class__.__name__))
         note = self._book.create_note(note)
-        updated = self.update(other, note)
-        return note.guid, updated, note.title.decode('utf-8')
+        return self.update(other, note)
 
     def update(self, that,  note=None):
         """
@@ -239,4 +250,4 @@ class EnClientSync(Sync):
         # perform the update
         note = self._book.update_note(note)
         self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(note.updated)))
-        return note.updated
+        return self.map_item(note)

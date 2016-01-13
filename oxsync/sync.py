@@ -105,11 +105,18 @@ class OxTaskSync(Sync, OxTasks):
                 # to UTC by adding self._ox.utc_offset
                 if len(raw) == 3:
                     if self._check_filter(raw):
-                        item = {'time': raw[1] + self._ox.utc_offset, 'key': raw[2]}
+                        item = {'id': raw[0], 'time': raw[1] + self._ox.utc_offset, 'key': raw[2]}
                         self._add_item(raw[0], item)
-                        # self._add_item(raw[0], raw[1] + self._ox.utc_offset, raw[2])
+
             return {'items': self.items, 'name': self.name, 'id': self.id}
         return None
+
+    def map_item(self, ref=None):
+
+        if isinstance(ref, OxTask):
+            return {'id': ref.id, 'key': ref[self._key_attribute], 'time': ref.timestamp}
+        else:
+            return Sync.map_item(self, ref)
 
     def changed(self, sync):
         return Sync.changed(self, sync)
@@ -144,8 +151,7 @@ class OxTaskSync(Sync, OxTasks):
         task = OxTask(data, self._ox)
         self.logger.info('%s: Creating task [%s] from %s' % (self.class_name, title, other.__class__.__name__))
         task = task.create()
-        updated = self.update(other, task)
-        return task.id, updated, task.title
+        return self.update(other, task)
 
     def update(self, that, task=None):
         """
@@ -314,4 +320,4 @@ class OxTaskSync(Sync, OxTasks):
         task = task.update()
         # timestamp from api request is UTC: don't add self._utc_offset
         self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(task.timestamp)))
-        return task.timestamp
+        return self.map_item(task)
