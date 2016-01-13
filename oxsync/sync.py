@@ -313,11 +313,10 @@ class OxTaskSync(Sync, OxTasks):
             # unknown sync object
             return None
 
-
-
         task._data['title'] = note.title
         task._data['full_time'] = False
         task = task.update()
+        # task.load()
         # timestamp from api request is UTC: don't add self._utc_offset
         self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(task.timestamp)))
         return self.map_item(task)

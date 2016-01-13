@@ -11,6 +11,35 @@ from enapi import *
 class EnClientSync(Sync):
 
     @staticmethod
+    def compare_tags(sync, map):
+
+        if sync is None: sync = []
+        if map is None: map = []
+
+        if len(sync) != len(map):
+            return False
+
+        l = len(sync)
+        if l > 0:
+            s = sorted(sync)
+            m = sorted(map)
+            for i in range(0,l-1):
+                if s[i] != m[i]:
+                    return False
+                i += 1
+
+        return True
+
+    @staticmethod
+    def extra(note):
+        extra = None
+        if note is not None:
+                extra = {'tags': note.tags,
+                         'reminderDoneTime': note.attributes.reminderDoneTime,
+                         'reminderTime': note.attributes.reminderTime}
+        return extra
+
+    @staticmethod
     def session(options, _logger):
         if options:
             if options.get('secrets'):
@@ -86,7 +115,7 @@ class EnClientSync(Sync):
             #key = eval('nmd.' + self._key_attribute)
             key = nmd[self._key_attribute].decode('utf-8')
             if self._check_filter(nmd):
-                item = {'id': nmd.guid, 'time': nmd.updated, 'key': key, 'extra': 'EXTRA'}
+                item = {'id': nmd.guid, 'time': nmd.updated, 'key': key, 'extra': EnClientSync.extra(nmd)}
                 self._add_item(nmd.guid, item)
 
         return {'items': self.items, 'name': self.name, 'id': self.guid}
@@ -95,17 +124,38 @@ class EnClientSync(Sync):
         if isinstance(ref, EnNote):
             #key = eval('ref.' + self._key_attribute)
             key = ref[self._key_attribute].decode('utf-8')
-            return {'id': ref.guid, 'key': key, 'time': ref.updated, 'extra': 'EXTRA'}
+            return {'id': ref.guid, 'key': key, 'time': ref.updated, 'extra': EnClientSync.extra(ref)}
 
         key = ref if ref is not None else self._key
         item = self._items.get(key)
         if item:
-            return {'id': item['id'], 'key': item['key'], 'time': item['time'], 'extra': 'EXTRA'}
+            return {'id': item['id'], 'key': item['key'], 'time': item['time'], 'extra': item.get('extra')}
         else:
             return None
 
     def changed(self, sync):
-        return Sync.changed(self, sync)
+
+        if not Sync.changed(self, sync):
+
+            # check extra attributes
+            sync_extra = sync.get('extra')
+
+            item = self._items.get(self._key)
+            item_extra = item.get('extra')
+            self.logger.debug('%s: Checking extra attributes %s' % (self.class_name, item_extra))
+
+            if sync_extra is not None and item_extra is not None:
+                if sync_extra.get('reminderTime') == item_extra.get('reminderTime'):
+                    if sync_extra.get('reminderDoneTime') == item_extra.get('reminderDoneTime'):
+                        if EnClientSync.compare_tags(sync_extra.get('tags'), item_extra.get('tags')):
+                            return False
+                        else:
+                            self.logger.info('%s: Tags changed' % (self.class_name))
+                    else:
+                        self.logger.info('%s: Reminder done time changed' % (self.class_name))
+                else:
+                    self.logger.info('%s: Reminder time changed' % (self.class_name))
+        return True
 
     def get(self):
         #note = self._client.note_store.getNote(guid, True, True, True, True)

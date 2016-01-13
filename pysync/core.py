@@ -54,18 +54,31 @@ class PySync(object):
     def _add_item(self, sid, lr, item):
 
         sync = self.sync if self._new_sync is None else self._new_sync
-        if sid not in sync: sync[sid] = {}
-        key = item.get('key')
-        if key is not None:
-            if 'key' in sync[sid]:
-                if key != sync[sid]['key']:
-                    self.logger.warning('%s: Found different keys [%s] <> [%s]' % (sid, key, sync[sid]['key']))
-            else:
-                sync[sid]['key'] = key
 
+        if sid not in sync:
+            sync[sid] = {}
+
+        key = item.get('key')
+
+        if key is not None:
+            if 'key' not in sync[sid]:
+                sync[sid]['key'] = key
             del(item['key'])
+
         sync[sid][lr] = item
-        self.logger.debug('%s: %-5s %s %s' % (sid, lr, key, item))
+        #self.logger.debug('%s: %-5s %s %s' % (sid, lr, key, item))
+
+# region Test UTF-8 decoding
+            # if isinstance(key, str):
+            #     sync[sid]['key'] = key.decode('utf-8')
+            # else:
+            #     sync[sid]['key'] = key
+
+            # if 'key' in sync[sid]:
+            #     if key != sync[sid]['key']:
+            #         self.logger.warning('%s: Found different keys [%s] <> [%s]' % (sid, key, sync[sid]['key']))
+            # else:
+# endregion
 
     def update(self, update):
 
@@ -256,7 +269,7 @@ class PySync(object):
                         litem = left.update(right)
 
                 self._add_item(sid, 'left', litem)
-                self._add_item(sid, 'right', right.map_item())
+                self._add_item(sid, 'right', ritem)
 
                 del left[lid]
                 del right[rid]
