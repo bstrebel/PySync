@@ -459,6 +459,7 @@ def unlock(relation, opts, _logger):
 def main():
 
     from argparse import ArgumentParser
+    from pysync import __version__, __author__
 
     options = {
         'secrets': '~/.pysync.secrets',
@@ -468,7 +469,7 @@ def main():
 
 # region Command line arguments
 
-    parser = ArgumentParser(description='PySnc Engine Rev. 0.1 (c) Bernd Strebel')
+    parser = ArgumentParser(description='PySnc Engine Rev. %s (c) %s' % (__version__, __author__))
     parser.add_argument('-c', '--config', type=str, help='use alternate configuration file')
     parser.add_argument('--relations', type=str, help='list of pysync relations to process')
     parser.add_argument('--rebuild', action='store_true', help='rebuild map file')
@@ -476,8 +477,7 @@ def main():
     parser.add_argument('--update', type=str, help='force update on left/right side')
 
     parser.add_argument('-l', '--loglevel', type=str,
-                        choices=['DEBUG', 'INFO', 'WARN', 'WARNING', 'ERROR', 'CRITICAL',
-                                 'debug', 'info', 'warn', 'warning', 'error', 'critical'],
+                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL'],
                         help='debug log level')
 
     args = parser.parse_args()
@@ -494,8 +494,8 @@ def main():
 # region Basic configuration and logger settings
 
     # set log level of requests module
-    requests = logging.getLogger('requests')
-    requests.setLevel(log_level(opts.loglevel_requests))
+    logging.getLogger('requests').setLevel(log_level(opts.loglevel_requests))
+    logging.getLogger('urllib3').setLevel(log_level(opts.loglevel_requests))
 
     logger.info('Parsing configuration file %s' % (opts.config_file))
 
