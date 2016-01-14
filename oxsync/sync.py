@@ -90,25 +90,22 @@ class OxTaskSync(Sync, OxTasks):
         return True
 
     def sync_map(self):
+
         folder = self._ox.get_folder('tasks', self.folder)
-        #self._name = folder.title
-        #self._id = folder.id
+
         if folder:
-            columns = [OxTask.map['id'], OxTask.map['last_modified'], OxTask.map[self._key_attribute]]
-            params = {'folder': folder.id,
-                      'columns': ",".join(map(lambda id: str(id), columns))}
-            self._data = []; self._items = {}
-            OxBeans.action(self, OxTask, 'all', params)
-            for raw in self._raw:
-                self._data.append(OxTask(raw, self._ox))
-                # timestamp from raw[1] is local time and must be changed
-                # to UTC by adding self._ox.utc_offset
-                if len(raw) == 3:
-                    if self._check_filter(raw):
-                        item = {'id': raw[0], 'time': raw[1] + self._ox.utc_offset, 'key': raw[2]}
-                        self._add_item(raw[0], item)
+
+            self._data = [];
+            self._items = {}
+
+            for task in self._ox.get_tasks(folder.id, ['id', 'last_modified', self._key_attribute]):
+                if self._check_filter(task):
+                    self._data.append(task)
+                    item = {'id': task.id, 'time': task.last_modified + self._ox.utc_offset, 'key': task[self._key_attribute]}
+                    self._add_item(task.id, item)
 
             return {'items': self.items, 'name': self.name, 'id': self.id}
+
         return None
 
     def map_item(self, ref=None):
