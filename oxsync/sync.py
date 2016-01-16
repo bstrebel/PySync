@@ -30,15 +30,16 @@ class OxTaskSync(Sync, OxTasks):
         return None
 
     @staticmethod
-    def enlink_add(note, link):
+    def enlink_add(note, link, tag='EVERNOTE'):
         if note is None: note = ''
-        note += "\nEVERNOTE: %s\n" % link
+        note += "\n%s: %s\n" % (tag, link)
         return note
 
     @staticmethod
-    def enlink_remove(note):
+    def enlink_remove(note, tag='EVERNOTE'):
         if note:
-            return re.sub('\nEVERNOTE: .*\n', '', note, re.MULTILINE)
+            pattern = '\n%s: https://.*\n' % (tag)
+            return re.sub(pattern, '', note, re.MULTILINE)
         else:
             return ''
 
@@ -195,7 +196,10 @@ class OxTaskSync(Sync, OxTasks):
             # reload and update timestamp
             task = task.load()
 
-            # check content
+            ########################
+            # process task content #
+            ########################
+
             content = ''
             if self.options.get('evernote_sourceURL', True):
                 if note.attributes.sourceURL:
@@ -210,9 +214,18 @@ class OxTaskSync(Sync, OxTasks):
                 content += note.plain
 
             if self.options.get('evernote_link', True):
-                task._data['note'] = OxTaskSync.enlink_add(content, note.edit_url)
+                tag = self.options.get('evernote_link_tag', 'EVERNOTE')
+                content = OxTaskSync.enlink_add(content, note.edit_url, tag)
 
-            # process other attributes
+            if self.options.get('evernote_iframe', True):
+                tag = self.options.get('evernote_iframe_tag', 'IFRAME')
+                content = OxTaskSync.enlink_add(content, note.view_url, tag)
+
+            task._data['note'] = content
+
+            ############################
+            # process other attributes #
+            ############################
 
             # always update reminderTime from Evernote
             newtime = strflocal(note.attributes.reminderTime) if note.attributes.reminderTime is not None else 'None'
@@ -246,7 +259,10 @@ class OxTaskSync(Sync, OxTasks):
                 self.logger.info('%s: Updating task status from [%s] to [%s]' %
                                  (self.class_name, OxTask.get_status(oldstatus), OxTask.get_status(newstatus)))
 
-            # process categories
+            ######################
+            # process categories #
+            ######################
+
             self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
 
             status_prefix = None
