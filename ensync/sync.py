@@ -97,10 +97,13 @@ class EnClientSync(Sync):
     @property
     def name(self): return self.signature.get('notebook')
 
+    @property
+    def need_last_map(self): return False
+
     def _check_filter(self, item):
         return True
 
-    def sync_map(self):
+    def sync_map(self, last=None):
         # from enapi import EnBook
         if self.guid:
             self._book = EnBook.initialize(self._client.note_store.getNotebook(self.guid))

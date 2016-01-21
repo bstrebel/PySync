@@ -56,11 +56,14 @@ class OxTaskSync(Sync, OxTasks):
 
         if options.get('signature') is None:
             self._folder = self._ox.get_folder('tasks', options.get('folder'))
-            signature = {'label': options.get('label')}
-            self._folder = self._ox.get_folder('tasks', options.get('folder'))
-            signature['folder'] = self._folder.title
-            signature['id'] = self._folder.id
-            self.options.update({'signature': signature})
+            if self._folder is not None:
+                signature = {'label': options.get('label')}
+                signature['folder'] = self._folder.title
+                signature['id'] = self._folder.id
+                self.options.update({'signature': signature})
+            else:
+                # TODO: process missing folder exception
+                pass
 
     def __repr__(self): return self.label
 
@@ -84,20 +87,29 @@ class OxTaskSync(Sync, OxTasks):
     @property
     def folder(self): return self.id if self.id else self.name
 
+    @property
+    def need_last_map(self): return False
+
     def end_session(self):
         return self._ox.logout()
 
     def _check_filter(self, item):
         return True
 
-    def sync_map(self):
+    def map_item(self, ref=None):
+
+        if isinstance(ref, OxTask):
+            return {'id': ref.id, 'key': ref[self._key_attribute], 'time': ref.timestamp}
+        else:
+            return Sync.map_item(self, ref)
+
+    def sync_map(self, last=None):
 
         folder = self._ox.get_folder('tasks', self.folder)
 
         if folder:
 
-            self._data = [];
-            self._items = {}
+            self._data = []; self._items = {}
 
             for task in self._ox.get_tasks(folder.id, ['id', 'last_modified', self._key_attribute]):
                 if self._check_filter(task):
@@ -109,12 +121,6 @@ class OxTaskSync(Sync, OxTasks):
 
         return None
 
-    def map_item(self, ref=None):
-
-        if isinstance(ref, OxTask):
-            return {'id': ref.id, 'key': ref[self._key_attribute], 'time': ref.timestamp}
-        else:
-            return Sync.map_item(self, ref)
 
     def changed(self, sync):
         return Sync.changed(self, sync)

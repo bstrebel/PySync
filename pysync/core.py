@@ -151,13 +151,23 @@ class PySync(object):
 
         return self._sync
 
+    def last_map(self, left_right):
+        last_map = {}
+        for sid in self._sync['map']:
+            id = self._sync['map'][sid][left_right]['id']
+            last_map[id] = self._sync['map'][sid][left_right]
+        return last_map
+
     def process(self):
 
         left = self._left
         right = self._right
 
-        left_map = left.sync_map()
-        right_map = right.sync_map()
+        left_last = self.last_map('left') if left.need_last_map else None
+        right_last = self.last_map('right') if right.need_last_map else None
+
+        left_map = left.sync_map(last=left_last)
+        right_map = right.sync_map(last=right_last)
 
         if self.sync is None:
             """
@@ -310,13 +320,15 @@ def parse_config(relation, config, _logger):
 
     from oxsync import OxTaskSync
     from ensync import EnClientSync
+    from tdsync import ToodledoSync
 
     logger = LogAdapter(_logger, {'package': 'config'})
 
     class_map = {
 
         'OxTaskSync': OxTaskSync,
-        'EnClientSync': EnClientSync
+        'EnClientSync': EnClientSync,
+        'ToodledoSync': ToodledoSync
     }
 
     relation_section = 'relation' + '_' + relation

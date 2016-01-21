@@ -23,6 +23,13 @@ class Sync(object):
         self._key = None
         self._items = {}
 
+    def __repr__(self): return self.label
+
+    def __str__(self): return self.label
+
+    @property
+    def class_name(self): return self.label
+
     @property
     def logger(self): return self._adapter
 
@@ -88,17 +95,29 @@ class Sync(object):
     def _check_filter(self, item):
         return True
 
+    @abstractproperty
+    def need_last_map(self):
+        return False
+
     @abstractmethod
-    def sync_map(self, what, compare):
+    def sync_map(self, last=None):
         return None
 
     @abstractmethod
     def create(self, that):
         return None, None
 
-    @abstractmethod
-    def update(self, this, that):
-        return None
+    # @abstractmethod
+    def update(self, that, this):
+
+        from pysync import OxTaskSync, EnClientSync, ToodledoSync
+
+        if isinstance(self, ToodledoSync):
+            if isinstance(that, OxTaskSync):
+                from tdsync import ToodldoOxSync
+                return self.map_item(ToodldoOxSync(self, self.logger).update(that, this))
+        else:
+            self.logger.error('%s: Updating from [%s] not supported' % (self.class_name, that.class_name))
 
     @abstractmethod
     def get(self):
