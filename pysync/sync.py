@@ -107,15 +107,22 @@ class Sync(object):
     def create(self, that):
         return None, None
 
-    # @abstractmethod
-    def update(self, that, this):
+    def update(self, that, this=None):
 
         from pysync import OxTaskSync, EnClientSync, ToodledoSync
 
         if isinstance(self, ToodledoSync):
             if isinstance(that, OxTaskSync):
-                from tdsync import ToodldoOxSync
-                return self.map_item(ToodldoOxSync(self, self.logger).update(that, this))
+                from tdsync import ToodledoFromOxTask
+                return self.map_item(ToodledoFromOxTask(self).update(that, this))
+        if isinstance(self, EnClientSync):
+            if isinstance(that, OxTaskSync):
+                from ensync import EvernoteFromOxTask
+                return self.map_item(EvernoteFromOxTask(self).update(that, this))
+        if isinstance(self, OxTaskSync):
+            if isinstance(that, EnClientSync):
+                from oxsync import OxTaskFromEvernote
+                return self.map_item(OxTaskFromEvernote(self).update(that, this))
         else:
             self.logger.error('%s: Updating from [%s] not supported' % (self.class_name, that.class_name))
 
