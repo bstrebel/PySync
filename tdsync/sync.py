@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time, json, re, requests, logging
-from pyutils import LogAdapter, strflocal, get_logger
+from pyutils import LogAdapter, strflocal, get_logger, utf8, string
 
 from pysync import Sync
 from tdapi import ToodledoAPI, ToodledoTask
@@ -44,14 +44,14 @@ class ToodledoSync(Sync):
         if options:
             if options.get('session') is not None:
                 if options.get('cache') is not None:
-                    if options.get('tasks') is not None:
+                    if options.get('tasks_cache') is not None:
                         if options.get('secrets'):
                             secrets = options['secrets']
                             if secrets.get('client_id'):
                                 if secrets.get('client_secret'):
                                     return ToodledoAPI.get_session(session=options.get('session'),
                                                                    cache=options.get('cache'),
-                                                                   tasks=options.get('tasks'),
+                                                                   tasks_cache=options.get('tasks_cache'),
                                                                    client_id=secrets['client_id'],
                                                                    client_secret=secrets['client_secret'],
                                                                    logger=_logger)
@@ -125,40 +125,8 @@ class ToodledoSync(Sync):
         self._client.delete_task(self.key)
         Sync.delete(self)
 
-    def create(self, that):
-        other = that.get()
-        self.logger.info('%s: Creating task [%s] from %s' % (self.class_name, other.title, other.__class__.__name__))
-        todo = ToodledoTask(title=other.title, tdapi=self._client).create()
-        return self.update(other, todo)
-
-    def update(self, that, todo=None):
-        """
-        Update Toodledo task from other module
-        :param that:    OtherClassSync (if called from sync)
-                        OtherClassObject (if called from create)
-        :param todo:    None (if called from sync)
-                        or the just created Toodledo task
-        :return:        current timestamp of updated Task
-        """
-        from toodledo_from_ox import OxTaskSync
-        from oxapi import OxTask
-
-        other = that; update = False
-        if todo is None:
-            update = True
-            todo = self.get()
-            self.logger.info('%s: Updating note [%s] from %s' % (self.class_name, todo.title, that.class_name))
-
-        # check sync module type
-        if isinstance(that, OxTaskSync):
-            other = that.get()
-        
-        # check sync object type
-        if isinstance(other, OxTask):
-            # create/update task from OxTask
-            task = other
-            todo.title = task.title
-
-        todo = self._client.update_task(todo)
-        self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(todo.modified)))
-        return self.map_item(todo)
+    def create(self, other):
+        that = other.get()
+        self.logger.info(u'%s: Creating task [%s] from %s' % (self.class_name, utf8(that.title), other.class_name))
+        todo = ToodledoTask(title=that.title, tdapi=self._client).create()
+        return self.update(other, that, todo)

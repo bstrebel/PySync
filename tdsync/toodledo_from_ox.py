@@ -7,30 +7,25 @@ from pysync import ThisFromThat
 
 class ToodledoFromOxTask(ThisFromThat):
 
-    def __init__(self, engine):
-        ThisFromThat.__init__(self, engine, 'td <- ox')
+    def __init__(self, engine, other):
+        ThisFromThat.__init__(self, engine, other, 'td <- ox')
 
-    def update(self, oxTaskSync,  todo=None):
-        """
-        Update Toodledo task from other module
-        :param oxTaskSync:    OtherClassSync (if called from sync)
-                        OtherClassObject (if called from create)
-        :param note:    None (if called from sync)
-                        or just created EnNote
-        :return:        current timestamp of updated EnNote
-        """
+    @property
+    def oxTaskSync(self):
+        return self._other
 
-        update = True if todo is None else False
-        if update:
-            todo = self._engine.get().load()
-            # TODO: check todo, raise exception (?)
-            self.logger.info('%s: Updating note [%s] from %s' % (self.class_name, todo.title.decode('utf-8'),
-                                                                 oxTaskSync.class_name))
+    def update(self, other, that=None,  this=None):
 
-        task = oxTaskSync.get().load()
-        # TODO: check task and raise exception (?)
+        task, todo = ThisFromThat.update(self, other, that, this)
+
+        toodledo_sync = self._engine
+        toodledo = self._engine.client
+
+        ox_task_sync = self._other
+        ox = self._other._ox
 
         todo.title = task.title
-        todo = self._engine._client.update_task(todo)
-        self.logger.info('%s: Updating completed with timestamp %s' % (self._engine.class_name, strflocal(todo.modified)))
+
+        todo = toodledo.update_task(todo)
+        self.logger.info(u'%s: Updating completed with timestamp %s' % (self._engine.class_name, strflocal(todo.modified)))
         return todo

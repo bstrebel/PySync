@@ -1,53 +1,32 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from pyutils import strflocal
+from pysync import ThisFromThat
 
-import os, sys, time, re, logging
-from pyutils import LogAdapter, strflocal, get_logger
-
-from pysync import ThisFromThat, EnClientSync
-from oxsync import OxTaskSync
-
-from oxapi import OxTask
-from enapi import EnNote
 
 class OxTaskFromEvernote(ThisFromThat):
 
-    def __init__(self, engine):
-        ThisFromThat.__init__(self, engine, 'ox <- en')
+    def __init__(self, engine, other):
+        ThisFromThat.__init__(self, engine, other, 'ox <- en')
 
-    @property
-    def _ox(self):
-        return self._engine._ox
+    def update(self, other, that=None, this=None):
 
-    @property
-    def maxsize(self):
-        return self._engine.maxsize
+        note, task = ThisFromThat.update(self, other, that, this)
 
-    def update(self, enClientSync, task=None):
+        ox = self._engine._ox
+        maxsize = self._engine.maxsize
+        update = self._update
 
-        """
-        Update OxTask from other module
-        :param enClientSync:    OtherClassSync (if called from sync)
-                        OtherClassObject (if called from create)
-        :param task:    None (if called from sync)
-                        OxTask (just created)
-        :return:        current timestamp of updated OxTask
-        """
+        from oxsync import OxTaskSync
+        from oxapi import OxTask
 
-        update = True if task is None else False
-        if update:
-            task = self._engine.get().load()
-            # TODO: check task, raise exception (?)
-            self.logger.info('%s: Updating task [%s] from %s' % (self.class_name, task.title, enClientSync.class_name))
-
-        note = enClientSync.get().load()
-        # TODO: check note, raise exception (?)
+        note = note.load()
         task._data['title'] = note.title
 
         if update:
             # update task from
             if task.number_of_attachments > 0:
-                for attachment in self._ox.get_attachments(task):
+                for attachment in ox.get_attachments(task):
                     if attachment.filename.startswith(note.guid):
                         attachment.detach()
 
@@ -67,13 +46,13 @@ class OxTaskFromEvernote(ThisFromThat):
         content = ''
         if self.options.get('evernote_sourceURL', True):
             if note.attributes.sourceURL:
-                if not note.attributes.sourceURL.startswith(self._ox.server):
+                if not note.attributes.sourceURL.startswith(ox.server):
                     self.logger.info('%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
                     content += "SOURCE: %s\n" % (note.attributes.sourceURL)
 
-        if note.contentLength > self.maxsize:
-            self.logger.info('%s: Evernote content exceeds limit of %d KB!' % (self.class_name, self.maxsize/1024))
-            content += "Evernote content exceeds limit of %d KB!" % (self.maxsize/1024)
+        if note.contentLength > maxsize:
+            self.logger.info('%s: Evernote content exceeds limit of %d KB!' % (self.class_name, maxsize/1024))
+            content += "Evernote content exceeds limit of %d KB!" % (maxsize/1024)
         else:
             content += note.plain
 
@@ -189,7 +168,7 @@ class OxTaskFromEvernote(ThisFromThat):
         task._data['title'] = note.title
         task._data['full_time'] = False
         task = task.update()
-        # task.load()
+        task.load()
         # timestamp from api request is UTC: don't add self._utc_offset
         self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(task.timestamp)))
         return task

@@ -170,9 +170,9 @@ class EnClientSync(Sync):
         self._client.delete_note(self.key)
         Sync.delete(self)
 
-    def create(self, that):
-        other = that.get()
-        note = EnNote(title=other.title)
-        self.logger.info('%s: Creating note [%s] from %s' % (self.class_name, other.title, other.__class__.__name__))
+    def create(self, other):
+        that = other.get()
+        note = EnNote(title=that.title)
+        self.logger.info('%s: Creating note [%s] from %s' % (self.class_name, that.title, other.class_name))
         note = self._book.create_note(note)
-        return self.update(other, note)
+        return self.update(other, that, note)

@@ -107,24 +107,35 @@ class Sync(object):
     def create(self, that):
         return None, None
 
-    def update(self, that, this=None):
+    def update(self, other, that=None, this=None):
 
         from pysync import OxTaskSync, EnClientSync, ToodledoSync
 
+        from oxsync import OxTaskFromEvernote, OxTaskFromToodldo
+        from oxapi import OxTask
+
+        from tdsync import ToodledoFromOxTask
+        from tdapi import ToodledoTask
+
+        from ensync import EvernoteFromOxTask
+        from enapi import EnNote
+
         if isinstance(self, ToodledoSync):
-            if isinstance(that, OxTaskSync):
-                from tdsync import ToodledoFromOxTask
-                return self.map_item(ToodledoFromOxTask(self).update(that, this))
+            if isinstance(other, OxTaskSync):
+                return self.map_item(ToodledoFromOxTask(self, other).update(other, that=that, this=this))
+
         if isinstance(self, EnClientSync):
-            if isinstance(that, OxTaskSync):
-                from ensync import EvernoteFromOxTask
-                return self.map_item(EvernoteFromOxTask(self).update(that, this))
+            if isinstance(other, OxTaskSync):
+                return self.map_item(EvernoteFromOxTask(self, other).update(other, that=that, this=this))
+
         if isinstance(self, OxTaskSync):
-            if isinstance(that, EnClientSync):
-                from oxsync import OxTaskFromEvernote
-                return self.map_item(OxTaskFromEvernote(self).update(that, this))
+            if isinstance(other, EnClientSync):
+                return self.map_item(OxTaskFromEvernote(self, other).update(other, that=that, this=this))
+            if isinstance(other, ToodledoSync):
+                return self.map_item(OxTaskFromToodldo(self, other).update(other, that=that, this=this))
+
         else:
-            self.logger.error('%s: Updating from [%s] not supported' % (self.class_name, that.class_name))
+            self.logger.error('%s: Updating from [%s] not supported' % (self.class_name, other.class_name))
 
     @abstractmethod
     def get(self):

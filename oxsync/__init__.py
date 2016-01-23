@@ -8,11 +8,13 @@ PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from .sync import OxTaskSync
 from .oxtask_from_evernote import OxTaskFromEvernote
+from .oxtask_from_toodledo import OxTaskFromToodldo
 
 __all__ = [
 
     'OxTaskSync',
-    'OxTaskFromEvernote'
+    'OxTaskFromEvernote',
+    'OxTaskFromToodldo'
 ]
 
 

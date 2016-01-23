@@ -152,11 +152,13 @@ class PySync(object):
         return self._sync
 
     def last_map(self, left_right):
-        last_map = {}
-        for sid in self._sync['map']:
-            id = self._sync['map'][sid][left_right]['id']
-            last_map[id] = self._sync['map'][sid][left_right]
-        return last_map
+        if self._sync.get('map'):
+            last_map = {}
+            for sid in self._sync['map']:
+                id = self._sync['map'][sid][left_right]['id']
+                last_map[id] = self._sync['map'][sid][left_right]
+            return last_map
+        return None
 
     def process(self):
 

@@ -8,47 +8,26 @@ from pysync import ThisFromThat
 
 class EvernoteFromOxTask(ThisFromThat):
 
-    def __init__(self, engine):
-        ThisFromThat.__init__(self, engine, 'en <- ox')
+    def __init__(self, engine, other):
+        ThisFromThat.__init__(self, engine, other, 'en <- ox')
 
-    @property
-    def maxsize(self):
-        return self._engine.maxsize
-
-    def update(self, oxTaskSync,  note=None):
-        """
-        Update Evernote from other module
-        :param oxTaskSync:    OtherClassSync (if called from sync)
-                        OtherClassObject (if called from create)
-        :param note:    None (if called from sync)
-                        or just created EnNote
-        :return:        current timestamp of updated EnNote
-        """
-
-        from oxsync import OxTaskSync
-        from oxapi import OxTask
+    def update(self, other, that=None, this=None):
 
         from enapi import ENMLOfPlainText, PlainTextOfENML
+        from oxapi import OxTask
 
-        update = True if note is None else False
+        task, note = ThisFromThat.update(self, other, that, this)
 
-        if update:
+        update = self._update
+        ox_task_sync = self._other
 
-            note = self._engine.get().load()
-            # TODO: check note, raise exception (?)
-
-            self.logger.info('%s: Updating note [%s] from %s' % (self.class_name, note.title.decode('utf-8'),
-                                                                 oxTaskSync.class_name))
-
-        task = oxTaskSync.get()
-        # TODO: check task, raise exception (?)
-
+        note = note.load()
         note.title = task.title
 
         # set evernote content for new or empty notes
         if not update:
             self.logger.info('%s: Updating note content' % (self.class_name))
-            note.content = ENMLOfPlainText(oxTaskSync.enlink_remove(task.note))
+            note.content = ENMLOfPlainText(ox_task_sync.enlink_remove(task.note))
             if self.options.get('ox_sourceURL', True):
                 if note.attributes.sourceURL is None:
                     note.attributes.sourceURL = task.get_url()
@@ -71,7 +50,7 @@ class EvernoteFromOxTask(ThisFromThat):
             if preserve:
                 self.logger.info('%s: Found %s - preserving existing note content' % (self.class_name, preserve))
             else:
-                note.content = ENMLOfPlainText(oxTaskSync.enlink_remove(task.note))
+                note.content = ENMLOfPlainText(ox_task_sync.enlink_remove(task.note))
                 self.logger.info('%s: Updating note content' % (self.class_name))
 
         # always update reminderTime

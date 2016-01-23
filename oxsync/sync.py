@@ -144,15 +144,15 @@ class OxTaskSync(Sync, OxTasks):
         task = self._ox.get_task(self.folder, self._key)
         return task
 
-    def create(self, that):
-        other = that.get()
+    def create(self, other):
+        that = other.get()
         # other must provide 'title'
-        if isinstance(other.title, str):
-            title = other.title.decode('utf-8')
+        if isinstance(that.title, str):
+            title = that.title.decode('utf-8')
         else:
-            title = other.title
+            title = that.title
         data = {'folder_id': self.id, 'title': title}
         task = OxTask(data, self._ox)
-        self.logger.info('%s: Creating task [%s] from %s' % (self.class_name, title, other.__class__.__name__))
+        self.logger.info('%s: Creating task [%s] from %s' % (self.class_name, title, other.class_name))
         task = task.create()
-        return self.update(other, task)
+        return self.update(other, that, task)
