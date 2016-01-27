@@ -72,6 +72,8 @@ class ToodledoSync(Sync):
     def __init__(self, client, options, logger=None):
 
         self._key_attribute = options.get('key','title')
+        self._folder = utf8(options.get('folder'))
+        self._folder_id = int(options.get('folder_id','0'))
         # self._maxsize = None
 
         if isinstance(client, ToodledoAPI):
@@ -92,6 +94,10 @@ class ToodledoSync(Sync):
     # def maxsize(self, value): self._maxsize = value
 
     @property
+    def folder(self):
+        return self._folder_id or self._client.get_folder(self._folder).get('id')
+
+    @property
     def client(self): return self._client
 
     @property
@@ -102,16 +108,29 @@ class ToodledoSync(Sync):
 
     def map_item(self, ref=None):
         if isinstance(ref, ToodledoTask):
-            return {'id': ref.id, 'key': ref[self._key_attribute], 'time': ref.modified * 1000}
+            # return {'id': ref.id, 'key': ref[self._key_attribute], 'time': ref.modified * 1000}
+            return {'id': ref._id, 'key': ref[self._key_attribute], 'time': ref._time}
         else:
             return Sync.map_item(self, ref)
 
     def sync_map(self, last=None):
         
         self._items = {}
-        for task in self._client.get_tasks():
+
+# region Test lambda filter expressions
+        # filter = None
+        # if self.options.get('folder_id'):
+        #     filter = "lambda bean: bean['folder'] == " +  self.options['folder_id']
+        # elif self.options.get('folder'):
+        #     filter = "lambda bean: bean['title'] == " +  self.options['folder']
+        # else:
+        #     filter = None
+# endregion
+
+        for task in self._client.get_tasks(self.folder):
             if self._check_filter(task):
-                self._add_item(task.id, self.map_item(task))
+                self._add_item(task._id, self.map_item(task))
+
         return {'items': self.items}
 
     def changed(self, sync):
@@ -128,5 +147,19 @@ class ToodledoSync(Sync):
     def create(self, other):
         that = other.get()
         self.logger.info(u'%s: Creating task [%s] from %s' % (self.class_name, utf8(that.title), other.class_name))
-        todo = ToodledoTask(title=that.title, tdapi=self._client).create()
+        todo = self._client.create_task(title=that.title, folder=self.folder)
         return self.update(other, that, todo)
+
+    def end_session(self, lr=None, opts=None):
+        if lr in ['left', 'right']:
+            self._client.end_session()
+            if self._client.tasks and self._client.tasks._created:
+                # replace uuid from created tasks with toodledo server id
+                created = self._client.tasks._created
+                for sid in opts['sync']['map']:
+                    item = opts['sync']['map'][sid][lr]
+                    uuid = item['id']
+                    if isinstance(uuid, str) and uuid in created:
+                        item['id'] = created[uuid]['id']
+                        item['time'] = created[uuid]['modified'] * 1000
+        return opts

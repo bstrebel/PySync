@@ -90,8 +90,10 @@ class OxTaskSync(Sync, OxTasks):
     @property
     def need_last_map(self): return False
 
-    def end_session(self):
-        return self._ox.logout()
+    def end_session(self, lr=None, opts=None):
+        if self._ox.authenticated:
+            self._ox.logout()
+        return opts
 
     def _check_filter(self, item):
         return True

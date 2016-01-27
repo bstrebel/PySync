@@ -55,6 +55,7 @@ class Sync(object):
         item = self._items.get(key)
         if item:
             return {'id': item['id'], 'key': item['key'], 'time': item['time']}
+            #return {'id': item._id, 'key': item._key, 'time': item._time}
         else:
             return None
 
@@ -88,8 +89,8 @@ class Sync(object):
     @property
     def key(self): return self._key
 
-    def end_session(self):
-        return None
+    def end_session(self, lr=None, opts=None):
+        return opts
 
     @abstractmethod
     def _check_filter(self, item):
@@ -112,13 +113,10 @@ class Sync(object):
         from pysync import OxTaskSync, EnClientSync, ToodledoSync
 
         from oxsync import OxTaskFromEvernote, OxTaskFromToodldo
-        from oxapi import OxTask
 
         from tdsync import ToodledoFromOxTask
-        from tdapi import ToodledoTask
 
         from ensync import EvernoteFromOxTask
-        from enapi import EnNote
 
         if isinstance(self, ToodledoSync):
             if isinstance(other, OxTaskSync):

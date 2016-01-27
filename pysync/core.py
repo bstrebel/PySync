@@ -226,9 +226,9 @@ class PySync(object):
                 lid = self.sync[sid]['left']['id']
                 rid = self.sync[sid]['right']['id']
 
-                self.logger.info('%s: [%s]' % (sid, self.sync[sid]['key']) )
-                self.logger.info('%s: %s %s' % (sid, self._left, self.sync[sid]['left']))
-                self.logger.info('%s: %s %s' % (sid, self._right, self.sync[sid]['right']))
+                self.logger.info('%s: %s' % (sid, self.sync[sid]['key']) )
+                self.logger.debug('%s: %s %s' % (sid, self._left, self.sync[sid]['left']))
+                self.logger.debug('%s: %s %s' % (sid, self._right, self.sync[sid]['right']))
 
                 if lid in left:
                     # left item exitst
@@ -456,7 +456,6 @@ def lock(relation, opts, _logger):
 
     return False
 
-
 def unlock(relation, opts, _logger):
 
     logger = LogAdapter(_logger, {'package': 'unlock'})
@@ -572,10 +571,16 @@ def main():
             relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
 
             if relation_opts['sync']:
+
                 relation_opts['sync']['relation'] = relation
                 relation_opts['sync']['left'] = left.options.signature
                 relation_opts['sync']['right'] = right.options.signature
                 relation_opts['sync']['time'] = strflocal()
+
+                # check/modify sync map by backend engine
+                relation_opts = left.end_session('left', relation_opts)
+                relation_opts = right.end_session('right', relation_opts)
+
                 with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
                     json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')
 

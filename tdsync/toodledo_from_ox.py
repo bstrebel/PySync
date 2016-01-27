@@ -18,14 +18,14 @@ class ToodledoFromOxTask(ThisFromThat):
 
         task, todo = ThisFromThat.update(self, other, that, this)
 
-        toodledo_sync = self._engine
-        toodledo = self._engine.client
+        tdsync = self._engine
+        tdapi = self._engine.client
 
-        ox_task_sync = self._other
+        oxsync = self._other
         ox = self._other._ox
 
         todo.title = task.title
 
-        todo = toodledo.update_task(todo)
-        self.logger.info(u'%s: Updating completed with timestamp %s' % (self._engine.class_name, strflocal(todo.modified)))
+        # todo = toodledo.update_task(todo)
+        self.logger.info(u'%s: Update completed with timestamp %s' % (self._engine.class_name, strflocal(todo.modified)))
         return todo
