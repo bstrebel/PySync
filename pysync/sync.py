@@ -23,6 +23,10 @@ class Sync(object):
         self._key = None
         self._items = {}
 
+        self._filter_expr = options.get('filter_expr')
+        self._filter_module = options.get('filter_module')
+
+
     def __repr__(self): return self.label
 
     def __str__(self): return self.label
@@ -92,9 +96,15 @@ class Sync(object):
     def end_session(self, lr=None, opts=None):
         return opts
 
-    @abstractmethod
     def _check_filter(self, item):
-        return True
+        ok = False
+        if self._filter_expr is not None:
+            ok = eval(self._filter_expr)
+        elif self._filter_module is not None:
+            ok = self._filter_module.check_filter(item)
+        else:
+            ok = True
+        return ok
 
     @abstractproperty
     def need_last_map(self):
@@ -114,17 +124,21 @@ class Sync(object):
 
         from oxsync import OxTaskFromEvernote, OxTaskFromToodldo
 
-        from tdsync import ToodledoFromOxTask
+        from tdsync import ToodledoFromOxTask, ToodledoFromEvernote
 
-        from ensync import EvernoteFromOxTask
+        from ensync import EvernoteFromOxTask, EvernoteFromToodledo
 
         if isinstance(self, ToodledoSync):
             if isinstance(other, OxTaskSync):
                 return self.map_item(ToodledoFromOxTask(self, other).update(other, that=that, this=this))
+            if isinstance(other, EnClientSync):
+                return self.map_item(ToodledoFromEvernote(self, other).update(other, that=that, this=this))
 
         if isinstance(self, EnClientSync):
             if isinstance(other, OxTaskSync):
                 return self.map_item(EvernoteFromOxTask(self, other).update(other, that=that, this=this))
+            if isinstance(other, ToodledoSync):
+                return self.map_item(EvernoteFromToodledo(self, other).update(other, that=that, this=this))
 
         if isinstance(self, OxTaskSync):
             if isinstance(other, EnClientSync):

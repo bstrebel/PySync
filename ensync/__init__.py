@@ -8,8 +8,10 @@ PACKAGE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 from .sync import EnClientSync
 from .evernote_from_oxtask import EvernoteFromOxTask
+from .evernote_from_toodledo import EvernoteFromToodledo
 
 __all__ = [
     'EnClientSync',
-    'EvernoteFromOxTask'
+    'EvernoteFromOxTask',
+    'EvernoteFromToodledo'
 ]

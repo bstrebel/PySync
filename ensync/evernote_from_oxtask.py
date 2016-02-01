@@ -18,6 +18,9 @@ class EvernoteFromOxTask(ThisFromThat):
 
         task, note = ThisFromThat.update(self, other, that, this)
 
+        ensync = self._engine ;  enapi = self._engine.client
+        oxsync = self._other; ox = self._other._ox
+
         update = self._update
         ox_task_sync = self._other
 
@@ -27,7 +30,7 @@ class EvernoteFromOxTask(ThisFromThat):
         # set evernote content for new or empty notes
         if not update:
             self.logger.info('%s: Updating note content' % (self.class_name))
-            note.content = ENMLOfPlainText(ox_task_sync.enlink_remove(task.note))
+            note.content = ENMLOfPlainText(task.note.rstrip())
             if self.options.get('ox_sourceURL', True):
                 if note.attributes.sourceURL is None:
                     note.attributes.sourceURL = task.get_url()
@@ -50,7 +53,12 @@ class EvernoteFromOxTask(ThisFromThat):
             if preserve:
                 self.logger.info('%s: Found %s - preserving existing note content' % (self.class_name, preserve))
             else:
-                note.content = ENMLOfPlainText(ox_task_sync.enlink_remove(task.note))
+                content = task.note
+                if oxsync.options.get('evernote_iframe', 'False'):
+                    content = ensync.remove_evernote_link(content, oxsync.options.get('evernote_iframe_tag', 'IFRAME'))
+                if oxsync.options.get('evernote_link', 'False'):
+                    content = ensync.remove_evernote_link(content, oxsync.options.get('evernote_link_tag', 'EVERNOTE'))
+                note.content = ENMLOfPlainText(content.rstrip())
                 self.logger.info('%s: Updating note content' % (self.class_name))
 
         # always update reminderTime

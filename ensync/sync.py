@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time, json, re, requests, logging
-from pyutils import LogAdapter, strflocal, get_logger
+from pyutils import LogAdapter, strflocal, get_logger, utf8
 
 from pysync import Sync
 from enapi import *
@@ -67,10 +67,16 @@ class EnClientSync(Sync):
 
         if options.get('signature') is None:
             self._book = self._client.notebook(options.get('notebook'))
-            signature = {'label': options.get('label')}
-            signature['notebook'] = self._book.name
-            signature['guid'] = self._book.guid
-            self.options.update({'signature': signature})
+            if self._book is not None:
+                signature = {'label': options.get('label')}
+                signature['notebook'] = self._book.name
+                signature['guid'] = self._book.guid
+                self.options.update({'signature': signature})
+            else:
+                self.logger.error('Evernote notebook [%s] not found' % (options.get('notebook')))
+        else:
+            # self._book = self._client.notebook(self.signature.get('guid'))
+            pass
 
     def __repr__(self): return self.label
     # return 'EnClient:%s' % (self._name)
@@ -96,6 +102,25 @@ class EnClientSync(Sync):
 
     @property
     def name(self): return self.signature.get('notebook')
+
+    @classmethod
+    def add_evernote_link(self, content, link, tag='EVERNOTE', title=None):
+        if content is None: content = ''
+        if title:
+            html = '<a href="%s">%s</a>' % (link, title)
+        else:
+            html = '%s' % (link)
+        content += '%s: %s\n' % (tag, html)
+        return content
+
+    @classmethod
+    def remove_evernote_link(self, content, tag='EVERNOTE'):
+        content = content + '\n'
+        if content:
+            pattern = '\n%s:.*https://www.evernote.com/.*\n' % (tag)
+            return re.sub(pattern, '', content, re.MULTILINE)
+        else:
+            return ''
 
     @property
     def need_last_map(self): return False

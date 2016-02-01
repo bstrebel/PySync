@@ -14,6 +14,7 @@ class OxTaskFromEvernote(ThisFromThat):
         note, task = ThisFromThat.update(self, other, that, this)
 
         ox = self._engine._ox
+        ensync = self._other
         maxsize = self._engine.maxsize
         update = self._update
 
@@ -58,11 +59,11 @@ class OxTaskFromEvernote(ThisFromThat):
 
         if self.options.get('evernote_link', True):
             tag = self.options.get('evernote_link_tag', 'EVERNOTE')
-            content = OxTaskSync.enlink_add(content, note.edit_url, tag)
+            content = ensync.add_evernote_link(content, note.edit_url, tag)
 
         if self.options.get('evernote_iframe', True):
             tag = self.options.get('evernote_iframe_tag', 'IFRAME')
-            content = OxTaskSync.enlink_add(content, note.view_url, tag)
+            content = ensync.add_evernote_link(content, note.view_url, tag)
 
         task._data['note'] = content
 
@@ -166,7 +167,8 @@ class OxTaskFromEvernote(ThisFromThat):
         task.categories = categories
 
         task._data['title'] = note.title
-        task._data['full_time'] = False
+        task._data['full_time'] = True
+        task._data['notification'] = True
         task = task.update()
         task.load()
         # timestamp from api request is UTC: don't add self._utc_offset
