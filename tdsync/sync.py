@@ -42,27 +42,19 @@ class ToodledoSync(Sync):
     @staticmethod
     def session(options, _logger):
         if options:
-            if options.get('session') is not None:
-                if options.get('cache') is not None:
-                    if options.get('tasks_cache') is not None:
-                        if options.get('secrets'):
-                            secrets = options['secrets']
-                            if secrets.get('client_id'):
-                                if secrets.get('client_secret'):
-                                    return ToodledoAPI.get_session(session=options.get('session'),
-                                                                   cache=options.get('cache'),
-                                                                   tasks_cache=options.get('tasks_cache'),
-                                                                   client_id=secrets['client_id'],
-                                                                   client_secret=secrets['client_secret'],
-                                                                   logger=_logger)
-                        else:
-                            msg = 'Missing secrets in Toodledo options'
-                    else:
-                        msg = 'Missing tasks cache file in Toodledo options'
+            if options.get('cache') is not None:
+                if options.get('secrets'):
+                    secrets = options['secrets']
+                    if secrets.get('client_id'):
+                        if secrets.get('client_secret'):
+                            return ToodledoAPI.get_session(cache=options.get('cache'),
+                                                           client_id=secrets['client_id'],
+                                                           client_secret=secrets['client_secret'],
+                                                           logger=_logger)
                 else:
-                    msg = 'Missing cache file in Toodledo options'
+                    msg = 'Missing secrets in Toodledo options'
             else:
-                msg = 'Missing oauth2 session file in Toodledo options'
+                msg = 'Missing cache specification in Toodledo options'
         else:
             msg = 'Missing Toodledo options'
 

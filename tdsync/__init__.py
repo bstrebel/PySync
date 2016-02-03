@@ -1,6 +1,6 @@
 import os
 
-__version__ = '0.2.0'
+__version__ = '0.9.2'
 __license__ = 'GPL2'
 __author__ = 'Bernd Strebel'
 
