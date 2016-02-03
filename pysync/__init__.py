@@ -1,6 +1,6 @@
 import os, sys, logging
 
-__version__ = '0.9.0'
+__version__ = '0.9.1'
 __license__ = 'GPL2'
 __author__ = 'Bernd Strebel'
 
@@ -10,14 +10,14 @@ from .core import PySync
 from .sync import Sync
 from .update import ThisFromThat
 
-from ensync import EnClientSync, EvernoteFromOxTask
-from oxsync import OxTaskSync, OxTaskFromEvernote
-from tdsync import ToodledoSync, ToodledoFromOxTask
+from ensync import EnClientSync, EvernoteFromOxTask, EvernoteFromToodledo
+from oxsync import OxTaskSync, OxTaskFromEvernote, OxTaskFromToodldo
+from tdsync import ToodledoSync, ToodledoFromOxTask, ToodledoFromEvernote
 
 __all__ = [
 
     'PySync', 'Sync', 'ThisFromThat',
-    'OxTaskSync', 'OxTaskFromEvernote',
-    'EnClientSync', 'EvernoteFromOxTask',
-    'ToodledoSync', 'ToodledoFromOxTask'
+    'OxTaskSync', 'OxTaskFromEvernote', 'OxTaskFromToodldo',
+    'EnClientSync', 'EvernoteFromOxTask', 'EvernoteFromToodledo',
+    'ToodledoSync', 'ToodledoFromOxTask', 'ToodledoFromEvernote'
 ]
