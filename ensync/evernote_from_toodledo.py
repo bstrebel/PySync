@@ -23,12 +23,12 @@ class EvernoteFromToodledo(ThisFromThat):
     #     else:
     #         return ''
 
-    def update(self, other, that=None, this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
         from enapi import ENMLOfPlainText, PlainTextOfENML
         from oxapi import OxTask
 
-        todo, note = ThisFromThat.update(self, other, that, this)
+        todo, note = ThisFromThat.update(self, other, that, this, sid)
         ensync = self._engine ;  enapi = self._engine.client
         tdsync = self._other; tdapi = self._other.client
         update = self._update

@@ -139,7 +139,7 @@ class PySync(object):
                     # item exists
                     item = sync[id]
                     self.logger.info('%s: Item deleted at %s' % (id, sync))
-                    sync.delete()
+                    sync.delete(sid)
                 else:
                     self.logger.info('%s: Skip missing item at %s' % (id, sync))
 
@@ -196,7 +196,7 @@ class PySync(object):
                 else:
                     # create missing item on right side
                     self.logger.info('Create missing item [%s] at %s' % (left[key]['key'], self.right))
-                    item = right.create(left)
+                    item = right.create(left, sid)
                     self._add_item(sid, 'right', item)
 
             for key in right:
@@ -208,7 +208,7 @@ class PySync(object):
                     sid = str(uuid.uuid1())
                     self.logger.info('Create missing item [%s] at %s' % (right[key]['key'], self.left))
                     self._add_item(sid, 'right', right.map_item(key))
-                    item = left.create(right)
+                    item = left.create(right, sid)
                     self._add_item(sid, 'left', item)
 
             # return self.sync
@@ -238,7 +238,7 @@ class PySync(object):
                     # => delete right item
                     if rid in right:
                         self.logger.info('%s: Item deleted at %s' % (sid, self.left))
-                        right.delete()
+                        right.delete(sid)
                     continue
 
                 if rid in right:
@@ -249,7 +249,7 @@ class PySync(object):
                     # => delete left item
                     if lid in left:
                         self.logger.info('%s: Item deleted at %s' % (sid, self.right))
-                        left.delete()
+                        left.delete(sid)
                     continue
 
                 # both items exists: compare and update sync map
@@ -266,19 +266,19 @@ class PySync(object):
                         if litem['time'] < ritem['time']:
                             self.logger.info('%s: Item newer at right %s ' % (sid, self.right))
                             self.logger.info('%s: Updating left item at %s' % (sid, self.left))
-                            litem = left.update(right)
+                            litem = left.update(right, sid=sid)
                         else:
                             self.logger.info('%s: Item newer at left %s ' % (sid, self.left))
                             self.logger.info('%s: Updating right item at %s' % (sid, self.right))
-                            ritem  = right.update(left)
+                            ritem  = right.update(left, sid=sid)
                     else:
                         self.logger.info('%s: Updating right item at %s' % (sid, self.right))
-                        ritem = right.update(left)
+                        ritem = right.update(left, sid=sid)
                 else:
                     if right.changed(rsync):
                         self.logger.info('%s: Item changed at right %s' % (sid, self.right))
                         self.logger.info('%s: Updating left item at %s' % (sid, self.left))
-                        litem = left.update(right)
+                        litem = left.update(right, sid=sid)
 
                 self._add_item(sid, 'left', litem)
                 self._add_item(sid, 'right', ritem)
@@ -289,9 +289,9 @@ class PySync(object):
             self.logger.info('Checking for new items at %s' % (self.left))
             for key in left:
                 # new items on the left side
-                ritem = right.create(left)
-
                 sid = str(uuid.uuid1())
+                ritem = right.create(left, sid)
+
                 self._add_item(sid, 'left', left.map_item())
                 self._add_item(sid, 'right', ritem)
 
@@ -302,9 +302,9 @@ class PySync(object):
             self.logger.info('Checking for new items at %s' % (self.right))
             for key in right:
                 # new items on the left side
-                litem = left.create(right)
-
                 sid = str(uuid.uuid1())
+                litem = left.create(right, sid)
+
                 self._add_item(sid, 'right', right.map_item())
                 self._add_item(sid, 'left', litem)
 
@@ -483,7 +483,7 @@ def main():
 # region Command line arguments
 
     parser = ArgumentParser(description='PySnc Engine Rev. %s (c) %s' % (__version__, __author__))
-    parser.add_argument('-c', '--config', type=str, help='use alternate configuration file')
+    parser.add_argument('-c', '--config', type=str, help='use alternate configuration file(s)')
     parser.add_argument('--relations', type=str, help='list of pysync relations to process')
     parser.add_argument('--rebuild', action='store_true', help='rebuild map file')
     parser.add_argument('--reset', type=str, help='delete entries and recreate from left/right')

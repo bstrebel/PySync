@@ -11,12 +11,12 @@ class EvernoteFromOxTask(ThisFromThat):
     def __init__(self, engine, other):
         ThisFromThat.__init__(self, engine, other, 'en <- ox')
 
-    def update(self, other, that=None, this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
         from enapi import ENMLOfPlainText, PlainTextOfENML
         from oxapi import OxTask
 
-        task, note = ThisFromThat.update(self, other, that, this)
+        task, note = ThisFromThat.update(self, other, that, this, sid)
 
         ensync = self._engine ;  enapi = self._engine.client
         oxsync = self._other; ox = self._other._ox
@@ -30,7 +30,8 @@ class EvernoteFromOxTask(ThisFromThat):
         # set evernote content for new or empty notes
         if not update:
             self.logger.info('%s: Updating note content' % (self.class_name))
-            note.content = ENMLOfPlainText(task.note.rstrip())
+            if task.note is not None:
+                note.content = ENMLOfPlainText(task.note.rstrip())
             if self.options.get('ox_sourceURL', True):
                 if note.attributes.sourceURL is None:
                     note.attributes.sourceURL = task.get_url()

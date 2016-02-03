@@ -35,9 +35,9 @@ class OxTaskFromToodldo(ThisFromThat):
     def __init__(self, engine, other):
         ThisFromThat.__init__(self, engine, other, 'ox <- td')
 
-    def update(self, other, that=None, this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
-        todo, task = ThisFromThat.update(self, other, that, this)
+        todo, task = ThisFromThat.update(self, other, that, this, sid)
         oxsync = self._engine; ox = self._engine._ox
         tdsync = self._other; tdapi = self._other.client
         update = self._update

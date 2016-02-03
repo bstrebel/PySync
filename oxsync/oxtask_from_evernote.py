@@ -9,9 +9,9 @@ class OxTaskFromEvernote(ThisFromThat):
     def __init__(self, engine, other):
         ThisFromThat.__init__(self, engine, other, 'ox <- en')
 
-    def update(self, other, that=None, this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
-        note, task = ThisFromThat.update(self, other, that, this)
+        note, task = ThisFromThat.update(self, other, that, this, sid)
 
         ox = self._engine._ox
         ensync = self._other

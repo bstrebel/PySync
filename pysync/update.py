@@ -28,7 +28,7 @@ class ThisFromThat(object):
     def options(self):
         return self._engine.options
 
-    def update(self, other, that=None, this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
         self._update = True if this is None else False
 

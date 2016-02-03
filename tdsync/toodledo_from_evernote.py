@@ -34,9 +34,9 @@ class ToodledoFromEvernote(ThisFromThat):
     def __init__(self, engine, other):
         ThisFromThat.__init__(self, engine, other, 'td <- en')
 
-    def update(self, other, that=None,  this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
-        note, todo = ThisFromThat.update(self, other, that, this)
+        note, todo = ThisFromThat.update(self, other, that, this, sid)
 
         tdsync = self._engine; tdapi = self._engine.client
         ensync = self._other ;  enapi = self._other.client

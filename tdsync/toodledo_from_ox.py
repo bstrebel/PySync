@@ -33,9 +33,9 @@ class ToodledoFromOxTask(ThisFromThat):
     def oxTaskSync(self):
         return self._other
 
-    def update(self, other, that=None,  this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
-        task, todo = ThisFromThat.update(self, other, that, this)
+        task, todo = ThisFromThat.update(self, other, that, this, sid)
 
         tdsync = self._engine
         tdapi = self._engine.client

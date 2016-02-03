@@ -34,25 +34,32 @@ class OxTaskSync(Sync, OxTasks):
         self._key_attribute = options.get('key','title')
         self._maxsize = options.get('maxsize', 2048)
         self._folder = None
+        self._archive = None
 
         Sync.__init__(self, options, logger, 'oxsync')
         OxTasks.__init__(self, ox)
 
         if self.signature is None:
+            signature = {'label': options.get('label')}
             if options.get('folder'):
-                folder = options.get('folder')
-                self._folder = self._ox.get_folder('tasks', folder)
+                self._folder = self._ox.get_folder('tasks', options['folder'])
                 if self._folder is not None:
-                    signature = {'label': options.get('label')}
                     signature['folder'] = self._folder.title
                     signature['id'] = self._folder.id
+                    if options.get('archive'):
+                        self._archive = self._ox.get_folder('tasks', options['archive'])
+                        if self._archive is not None:
+                            signature['archive'] = self._archive.id
+                        else:
+                            self.logger.error(u'Archive folder [%s] not found!' % (utf8(options['archive'])))
                     self.options.update({'signature': signature})
                 else:
-                    self.logger.error(u'Folder [%s] not found!' % (utf8(folder)))
+                    self.logger.error(u'Folder [%s] not found!' % (utf8(options['folder'])))
             else:
                 self.logger.error(u'No folder specified in in sync options!')
         else:
             self._folder = self._ox.get_folder('tasks', self.signature['id'])
+            self._archive = self._ox.get_folder('tasks', self.signature['archive'])
 
     def __repr__(self): return self.label
 
@@ -85,6 +92,7 @@ class OxTaskSync(Sync, OxTasks):
     def end_session(self, lr=None, opts=None):
         if self._ox.authenticated:
             self._ox.logout()
+        OxHttpAPI.set_session(None)
         return opts
 
     def _check_filter(self, item):
@@ -119,18 +127,17 @@ class OxTaskSync(Sync, OxTasks):
     def changed(self, sync):
         return Sync.changed(self, sync)
 
-    def delete(self):
+    def delete(self, sid=None):
 
         task = self._ox.get_task(self.folder.id, self._key)
 
         if task.status and task.status == OxTask.get_status('Done'):
-            if self.options.get('tasks_archive_folder'):
-                target = self._ox.get_folder('tasks', self.options.get('tasks_archive_folder'))
-                if target:
-                    self._ox.move_task(self.folder, self.key, target)
-                    Sync.delete(self)
-                    return
-
+            if self._archive is not None:
+                self.logger.info('Moving completed task [%s] to archive [%s]' % (task.title, self._archive.title))
+                self._ox.move_task(self.folder.id, self.key, self._archive)
+                Sync.delete(self)
+                return
+        self.logger.info(u'Deleting task [%s]: %s' % (task.id, task.title))
         self._ox.delete_task(self.folder.id, self.key)
         Sync.delete(self)
 
@@ -138,7 +145,7 @@ class OxTaskSync(Sync, OxTasks):
         task = self._ox.get_task(self.folder.id, self._key)
         return task
 
-    def create(self, other):
+    def create(self, other, sid=None):
         that = other.get()
         # other must provide 'title'
         if isinstance(that.title, str):
@@ -149,4 +156,4 @@ class OxTaskSync(Sync, OxTasks):
         task = OxTask(data, self._ox)
         self.logger.info('%s: Creating task [%s] from %s' % (self.class_name, title, other.class_name))
         task = task.create()
-        return self.update(other, that, task)
+        return self.update(other, that, task, sid=sid)

@@ -141,15 +141,15 @@ class ToodledoSync(Sync):
         todo = self._client.get_task(self.key)
         return todo
 
-    def delete(self):
+    def delete(self, sid=None):
         self._client.delete_task(self.key)
         Sync.delete(self)
 
-    def create(self, other):
+    def create(self, other, sid=None):
         that = other.get()
         self.logger.info(u'%s: Creating task [%s] from %s' % (self.class_name, utf8(that.title), other.class_name))
         todo = self._client.create_task(title=that.title, folder=self.folder.id)
-        return self.update(other, that, todo)
+        return self.update(other, that, todo, sid=sid)
 
     def end_session(self, lr=None, opts=None):
         if lr in ['left', 'right']:

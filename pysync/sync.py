@@ -115,10 +115,10 @@ class Sync(object):
         return None
 
     @abstractmethod
-    def create(self, that):
+    def create(self, that, sid=None):
         return None, None
 
-    def update(self, other, that=None, this=None):
+    def update(self, other, that=None, this=None, sid=None):
 
         from pysync import OxTaskSync, EnClientSync, ToodledoSync
 
@@ -130,21 +130,21 @@ class Sync(object):
 
         if isinstance(self, ToodledoSync):
             if isinstance(other, OxTaskSync):
-                return self.map_item(ToodledoFromOxTask(self, other).update(other, that=that, this=this))
+                return self.map_item(ToodledoFromOxTask(self, other).update(other, that=that, this=this, sid=sid))
             if isinstance(other, EnClientSync):
-                return self.map_item(ToodledoFromEvernote(self, other).update(other, that=that, this=this))
+                return self.map_item(ToodledoFromEvernote(self, other).update(other, that=that, this=this, sid=sid))
 
         if isinstance(self, EnClientSync):
             if isinstance(other, OxTaskSync):
-                return self.map_item(EvernoteFromOxTask(self, other).update(other, that=that, this=this))
+                return self.map_item(EvernoteFromOxTask(self, other).update(other, that=that, this=this, sid=sid))
             if isinstance(other, ToodledoSync):
-                return self.map_item(EvernoteFromToodledo(self, other).update(other, that=that, this=this))
+                return self.map_item(EvernoteFromToodledo(self, other).update(other, that=that, this=this, sid=sid))
 
         if isinstance(self, OxTaskSync):
             if isinstance(other, EnClientSync):
-                return self.map_item(OxTaskFromEvernote(self, other).update(other, that=that, this=this))
+                return self.map_item(OxTaskFromEvernote(self, other).update(other, that=that, this=this, sid=sid))
             if isinstance(other, ToodledoSync):
-                return self.map_item(OxTaskFromToodldo(self, other).update(other, that=that, this=this))
+                return self.map_item(OxTaskFromToodldo(self, other).update(other, that=that, this=this, sid=sid))
 
         else:
             self.logger.error('%s: Updating from [%s] not supported' % (self.class_name, other.class_name))
@@ -154,7 +154,7 @@ class Sync(object):
         return None
 
     @abstractmethod
-    def delete(self):
+    def delete(self, sid=None):
         self.logger.info('%s: Delete %s' % (self.class_name, self.dump_item()))
         del self._items[self.key]
 
