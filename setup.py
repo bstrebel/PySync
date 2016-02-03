@@ -9,13 +9,13 @@ version = re.search(
 setup(
     name='PySync',
     version=version,
-    packages=['pysync', 'oxsync', 'ensync'],
+    packages=['pysync', 'oxsync', 'ensync', 'tdsync'],
     url='https://github.com/bstrebel/PySync',
     license='GPL2',
     author='Bernd Strebel',
     author_email='b.strebel@digitec.de',
     description='Python Sync Engine',
     long_description=open('README.md').read(),
-    install_requires=['PyUtils', 'OxAPI', 'EvernoteAPI'],
+    install_requires=['PyUtils', 'OxAPI', 'EvernoteAPI', 'ToodledoAPI'],
     entry_points={'console_scripts': ['pysync = pysync.core:main']}
 )
