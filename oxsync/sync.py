@@ -41,13 +41,15 @@ class OxTaskSync(Sync, OxTasks):
 
         if self.signature is None:
             signature = {'label': options.get('label')}
-            if options.get('folder'):
+            if options.get('folder') is not None:
                 self._folder = self._ox.get_folder('tasks', options['folder'])
+                self.logger.debug(u'Using folder [%s]: %s' % (self._folder.id, utf8(self._folder.title)))
                 if self._folder is not None:
                     signature['folder'] = self._folder.title
                     signature['id'] = self._folder.id
                     if options.get('archive'):
                         self._archive = self._ox.get_folder('tasks', options['archive'])
+                        self.logger.debug(u'Using archive folder [%s]: %s' % (self._folder.id, utf8(self._folder.title)))
                         if self._archive is not None:
                             signature['archive'] = self._archive.id
                         else:
@@ -58,8 +60,21 @@ class OxTaskSync(Sync, OxTasks):
             else:
                 self.logger.error(u'No folder specified in in sync options!')
         else:
-            self._folder = self._ox.get_folder('tasks', self.signature['id'])
-            self._archive = self._ox.get_folder('tasks', self.signature['archive'])
+            if self.signature['id']:
+                self._folder = self._ox.get_folder('tasks', self.signature['id'])
+                if self._folder is not None:
+                    self.logger.debug('Using folder [%s]: %s' % (self._folder.id, utf8(self._folder.title)))
+                else:
+                    self.logger.error('Folder [%s] from map file not found!')
+                    # TODO: raise engine exception
+
+            if self.signature['archive']:
+                self._archive = self._ox.get_folder('tasks', self.signature['archive'])
+                if self._folder is not None:
+                    self.logger.debug('Using folder [%s]: %s' % (self._archive.id, utf8(self._archive.title)))
+                else:
+                    self.logger.error('Arvhive folder [%s] from map file not found!')
+                    # TODO: raise engine exception
 
     def __repr__(self): return self.label
 
