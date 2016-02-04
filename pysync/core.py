@@ -46,6 +46,18 @@ class PySync(object):
     def right(self): return self._right
 
     @property
+    def opts(self): return self._opts
+
+    @property
+    def unidirectional(self): return bool(self.opts.get('unidirectional'))
+
+    @property
+    def bidirectional(self): return bool(not self.unidirectional)
+
+    @property
+    def direction(self): return 'unidirectional' if self.unidirectional else 'bidirectional'
+
+    @property
     def sync(self): return self._sync['map']
 
     @sync.setter
@@ -179,11 +191,10 @@ class PySync(object):
             self.sync = {}
             self._new_sync = None
 
-            self.logger.info("Initalizing sync map ...")
-
+            self.logger.info('Initalizing [%s] sync map ...' % (self.direction))
+            self.logger.info('Checking left side: %s' % (self.left))
             for key in left:
 
-                self.logger.info('Checking %s' % (self.left))
                 sid = str(uuid.uuid1())
                 self._add_item(sid, 'left', left.map_item(key))
 
@@ -199,17 +210,17 @@ class PySync(object):
                     item = right.create(left, sid)
                     self._add_item(sid, 'right', item)
 
-            for key in right:
+            if self.bidirectional:
+                self.logger.info('Checking right side: %s' % (self.right))
+                for key in right:
 
-                self.logger.info('Checking %s' % (self.left))
-
-                if key not in found:
-                    # new key on the right side
-                    sid = str(uuid.uuid1())
-                    self.logger.info('Create missing item [%s] at %s' % (right[key]['key'], self.left))
-                    self._add_item(sid, 'right', right.map_item(key))
-                    item = left.create(right, sid)
-                    self._add_item(sid, 'left', item)
+                    if key not in found:
+                        # new key on the right side
+                        sid = str(uuid.uuid1())
+                        self.logger.info('Create missing item [%s] at %s' % (right[key]['key'], self.left))
+                        self._add_item(sid, 'right', right.map_item(key))
+                        item = left.create(right, sid)
+                        self._add_item(sid, 'left', item)
 
             # return self.sync
 
@@ -219,7 +230,7 @@ class PySync(object):
             """
             self._new_sync = {}
 
-            self.logger.info('Processing sync map ...')
+            self.logger.info('Processing [%s] sync map ...' % (self.direction))
 
             for sid in self.sync:
 
@@ -245,11 +256,12 @@ class PySync(object):
                     # right item exitst
                     ritem = right[rid]
                 else:
-                    # item deleted on right side
-                    # => delete left item
-                    if lid in left:
-                        self.logger.info('%s: Item deleted at %s' % (sid, self.right))
-                        left.delete(sid)
+                    if self.bidirectional:
+                        # item deleted on right side
+                        # => delete left item
+                        if lid in left:
+                            self.logger.info('%s: Item deleted at %s' % (sid, self.right))
+                            left.delete(sid)
                     continue
 
                 # both items exists: compare and update sync map
@@ -265,8 +277,12 @@ class PySync(object):
                         self.logger.info('%s: Item also changed at right %s' % (sid, self.right))
                         if litem['time'] < ritem['time']:
                             self.logger.info('%s: Item newer at right %s ' % (sid, self.right))
-                            self.logger.info('%s: Updating left item at %s' % (sid, self.left))
-                            litem = left.update(right, sid=sid)
+                            if self.bidirectional:
+                                self.logger.info('%s: Updating left item at %s' % (sid, self.left))
+                                litem = left.update(right, sid=sid)
+                            else:
+                                self.logger.info('%s: Undo changes for right item at %s' % (sid, self.right))
+                                ritem = right.update(left, sid=sid)
                         else:
                             self.logger.info('%s: Item newer at left %s ' % (sid, self.left))
                             self.logger.info('%s: Updating right item at %s' % (sid, self.right))
@@ -277,8 +293,12 @@ class PySync(object):
                 else:
                     if right.changed(rsync):
                         self.logger.info('%s: Item changed at right %s' % (sid, self.right))
-                        self.logger.info('%s: Updating left item at %s' % (sid, self.left))
-                        litem = left.update(right, sid=sid)
+                        if self.bidirectional:
+                            self.logger.info('%s: Updating left item at %s' % (sid, self.left))
+                            litem = left.update(right, sid=sid)
+                        else:
+                            self.logger.info('%s: Undo changes for right item at %s' % (sid, self.right))
+                            ritem = right.update(left, sid=sid)
 
                 self._add_item(sid, 'left', litem)
                 self._add_item(sid, 'right', ritem)
@@ -301,16 +321,19 @@ class PySync(object):
 
             self.logger.info('Checking for new items at %s' % (self.right))
             for key in right:
-                # new items on the left side
-                sid = str(uuid.uuid1())
-                litem = left.create(right, sid)
+                # new items on the right side
+                if self.bidirectional:
+                    sid = str(uuid.uuid1())
+                    litem = left.create(right, sid)
 
-                self._add_item(sid, 'right', right.map_item())
-                self._add_item(sid, 'left', litem)
+                    self._add_item(sid, 'right', right.map_item())
+                    self._add_item(sid, 'left', litem)
 
-                self.logger.info('%s: [%s]' % (sid, self._new_sync[sid]['key']) )
-                self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
-                self.logger.info('%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
+                    self.logger.info('%s: [%s]' % (sid, self._new_sync[sid]['key']) )
+                    self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
+                    self.logger.info('%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
+                else:
+                    right.delete(None)
 
             self._sync['map'] = self._new_sync
 

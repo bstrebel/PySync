@@ -42,14 +42,14 @@ class OxTaskSync(Sync, OxTasks):
         if self.signature is None:
             signature = {'label': options.get('label')}
             if options.get('folder') is not None:
-                self._folder = self._ox.get_folder('tasks', options['folder'])
+                self._folder = self._ox.get_folder('tasks', utf8(options['folder']))
                 self.logger.debug(u'Using folder [%s]: %s' % (self._folder.id, utf8(self._folder.title)))
                 if self._folder is not None:
                     signature['folder'] = self._folder.title
                     signature['id'] = self._folder.id
                     if options.get('archive'):
-                        self._archive = self._ox.get_folder('tasks', options['archive'])
-                        self.logger.debug(u'Using archive folder [%s]: %s' % (self._folder.id, utf8(self._folder.title)))
+                        self._archive = self._ox.get_folder('tasks', utf8(options['archive']))
+                        self.logger.debug(u'Using archive folder [%s]: %s' % (self._archive.id, utf8(self._archive.title)))
                         if self._archive is not None:
                             signature['archive'] = self._archive.id
                         else:
@@ -150,11 +150,11 @@ class OxTaskSync(Sync, OxTasks):
             if self._archive is not None:
                 self.logger.info('Moving completed task [%s] to archive [%s]' % (task.title, self._archive.title))
                 self._ox.move_task(self.folder.id, self.key, self._archive)
-                Sync.delete(self)
+                Sync.delete(self, sid)
                 return
         self.logger.info(u'Deleting task [%s]: %s' % (task.id, task.title))
         self._ox.delete_task(self.folder.id, self.key)
-        Sync.delete(self)
+        Sync.delete(self, sid)
 
     def get(self):
         task = self._ox.get_task(self.folder.id, self._key)

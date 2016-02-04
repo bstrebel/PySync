@@ -135,7 +135,7 @@ class ToodledoSync(Sync):
 
     def delete(self, sid=None):
         self._client.delete_task(self.key)
-        Sync.delete(self)
+        Sync.delete(self, sid)
 
     def create(self, other, sid=None):
         that = other.get()

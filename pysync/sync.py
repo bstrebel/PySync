@@ -156,7 +156,8 @@ class Sync(object):
     @abstractmethod
     def delete(self, sid=None):
         self.logger.info('%s: Delete %s' % (self.class_name, self.dump_item()))
-        del self._items[self.key]
+        if sid is not None:
+            del self._items[self.key]
 
     @abstractmethod
     def changed(self, sync):
