@@ -79,7 +79,6 @@ class ToodledoFromOxTask(ThisFromThat):
         note = task.note or u''
         if note != todo.note:
             todo.note = note
-            self.logger.info('Note changed to [%s]' % (note[:16]))
 
         DAY = 60*60 * 24
         OX_UTC_TIME = 0

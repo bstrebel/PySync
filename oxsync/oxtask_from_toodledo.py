@@ -73,7 +73,6 @@ class OxTaskFromToodldo(ThisFromThat):
         note = utf8(todo.note)
         if note != task.note:
             task.note = note
-            self.logger.info('Note changed to [%s]' % (note))
 
         DAY = 60*60 * 24
         OX_UTC_TIME = 0
