@@ -219,6 +219,7 @@ class PySync(object):
                     self._add_item(sid, 'right', item)
 
             if self.bidirectional:
+
                 self.logger.info('Checking right side: %s' % (self.right))
                 for key in right:
 
@@ -230,7 +231,7 @@ class PySync(object):
                         item = left.create(right, sid)
                         self._add_item(sid, 'left', item)
 
-            # return self.sync
+            # return self._sync
 
         else:
             """

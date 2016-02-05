@@ -155,4 +155,8 @@ class ToodledoSync(Sync):
                     if isinstance(uuid, str) and uuid in created:
                         item['id'] = created[uuid]['id']
                         item['time'] = created[uuid]['modified'] * 1000
+                self._client.tasks._created = {}
+        else:
+            # invalidate current session and clear caches
+            self._client.set_session(None)
         return opts
