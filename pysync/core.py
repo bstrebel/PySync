@@ -49,13 +49,21 @@ class PySync(object):
     def opts(self): return self._opts
 
     @property
-    def unidirectional(self): return bool(self.opts.get('unidirectional'))
+    def unidirectional(self):
+        # return bool(self.opts.get('unidirectional'))
+        false = ['false', 'off', '0', 'none']
+        return type(self.opts['unidirectional']) is str and self.opts['unidirectional'].lower() not in false
 
     @property
     def bidirectional(self): return bool(not self.unidirectional)
 
     @property
     def direction(self): return 'unidirectional' if self.unidirectional else 'bidirectional'
+
+    @property
+    def unidirectional_strict(self):
+        return isinstance(self.opts['unidirectional'], str) and self.opts['unidirectional'].lower() == 'strict'
+
 
     @property
     def sync(self): return self._sync['map']
@@ -333,7 +341,11 @@ class PySync(object):
                     self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
                     self.logger.info('%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
                 else:
-                    right.delete(None)
+                    if self.unidirectional_strict:
+                        self.logger.debug('Deleting new item at right because of unidirectional strict: %s' % (right))
+                        right.delete(None)
+                    else:
+                        self.logger.debug('Ignoring new item at right because auf unidirectional merge: %s' % (right))
 
             self._sync['map'] = self._new_sync
 
