@@ -41,7 +41,7 @@ class EvernoteFromToodledo(ThisFromThat):
         # set evernote content for new or empty notes #
         ###############################################
         if not update:
-            self.logger.info('%s: Updating note content' % (self.class_name))
+            self.logger.debug(u'%s: Updating note content' % (self.class_name))
             note.content = ENMLOfPlainText(todo.note.rstrip())
             if self.options.get('toodledo_sourceURL', True):
                 if note.attributes.sourceURL is None:
@@ -54,17 +54,17 @@ class EvernoteFromToodledo(ThisFromThat):
         else:
             preserve = None
             if note.resources:
-                preserve = "resources"
+                preserve = 'resources'
             else:
                 if note.attributes.sourceURL:
                     url = tdsync.options.get('server_url','www.toodledo.com')
                     if not re.search(url, note.attributes.sourceURL, re.IGNORECASE):
-                        preserve = "source URL"
+                        preserve = 'source URL'
                 else:
                     if re.sub('\s', '', PlainTextOfENML(note.content), re.MULTILINE):
-                        preserve = "content"
+                        preserve = 'content'
             if preserve:
-                self.logger.info('%s: Found %s - preserving existing note content' % (self.class_name, preserve))
+                self.logger.debug(u'%s: Found %s - preserving existing note content' % (self.class_name, preserve))
             else:
                 content = todo.note
                 if tdsync.options.get('evernote_iframe', 'False'):
@@ -72,7 +72,7 @@ class EvernoteFromToodledo(ThisFromThat):
                 if tdsync.options.get('evernote_link', 'False'):
                     content = ensync.remove_evernote_link(content, tdsync.options.get('evernote_link_tag', 'EVERNOTE'))
                 note.content = ENMLOfPlainText(content.rstrip())
-                self.logger.info('%s: Updating note content' % (self.class_name))
+                self.logger.debug(u'%s: Updating note content' % (self.class_name))
 
         ##############################
         # always update reminderTime #
@@ -84,7 +84,7 @@ class EvernoteFromToodledo(ThisFromThat):
         else:
             note.attributes.reminderTime = None
             note.attributes.reminderOrder = None
-        self.logger.info('%s: Updating note reminderTime from %s [%s]' % (self.class_name, attribute,
+        self.logger.debug(u'%s: Updating note reminderTime from %s [%s]' % (self.class_name, attribute,
                                                                           strflocal(note.attributes.reminderTime, None)))        
         ###########################
         # update reminderDoneTime #
@@ -97,7 +97,7 @@ class EvernoteFromToodledo(ThisFromThat):
         else:
             note.attributes.reminderDoneTime = None
             
-        self.logger.info('Update reminderDoneTime from [%s]' % (strflocal(todo.completed, None)))
+        self.logger.debug(u'Update reminderDoneTime from [%s]' % (strflocal(todo.completed, None)))
         
         ##########################
         # process lists and tags #
@@ -109,42 +109,42 @@ class EvernoteFromToodledo(ThisFromThat):
         if tdsync.options.get('evernote_tag_status'):
             tag = tdsync.options.get('evernote_tag_status') + ToodledoTask.STATUS[todo.status]
             note.tagNames.append(tag)
-            self.logger.info('Create status tag [%s]' % (tag))
+            self.logger.debug(u'Create status tag [%s]' % (tag))
         
         if tdsync.options.get('evernote_tag_priority'):
             tag = tdsync.options.get('evernote_tag_priority') + self.priority_map[todo.priority]
             note.tagNames.append(tag)
-            self.logger.info('Create priority tag [%s]' % (tag))
+            self.logger.debug(u'Create priority tag [%s]' % (tag))
                 
         if tdsync.options.get('evernote_tag_star'):
             if todo.star:
                 tag = tdsync.options.get('evernote_tag_star')
                 note.tagNames.append(tag)
-                self.logger.info('Create star tag [%s]' % (tag))
+                self.logger.debug(u'Create star tag [%s]' % (tag))
 
         if tdsync.options.get('evernote_tag_context'):
             if todo.context:
                 tag = tdsync.options.get('evernote_tag_context') + tdapi.contexts[todo.context]['name']
                 note.tagNames.append(tag)
-                self.logger.info('Create context tag [%s]' % (tag))
+                self.logger.debug(u'Create context tag [%s]' % (tag))
 
         if tdsync.options.get('evernote_tag_goal'):
             if todo.goal:
                 tag = tdsync.options.get('evernote_tag_goal') + tdapi.goals[todo.goal]['name']
                 note.tagNames.append(tag)
-                self.logger.info('Create goal tag [%s]' % (tag))
+                self.logger.debug(u'Create goal tag [%s]' % (tag))
 
         if tdsync.options.get('evernote_tag_location'):
             if todo.location:
                 tag = tdsync.options.get('evernote_tag_location') + tdapi.locations[todo.location]['name']
                 note.tagNames.append(tag)
-                self.logger.info('Create location tag [%s]' % (tag))
+                self.logger.debug(u'Create location tag [%s]' % (tag))
             
         for tag in todo.tag_names():
             note.tagNames.append(tag)
-            self.logger.info('Create category tag [%s]' % (tag))
+            self.logger.debug(u'Create category tag [%s]' % (tag))
 
         # perform the update (including the necessary encoding)
         note = self._engine._book.update_note(note)
-        self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(note.updated)))
+        self.logger.debug(u'%s: Updating completed with timestamp %s' % (self.class_name, strflocal(note.updated)))
         return note

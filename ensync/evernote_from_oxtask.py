@@ -29,7 +29,7 @@ class EvernoteFromOxTask(ThisFromThat):
 
         # set evernote content for new or empty notes
         if not update:
-            self.logger.info('%s: Updating note content' % (self.class_name))
+            self.logger.debug(u'%s: Updating note content' % (self.class_name))
             if task.note is not None:
                 note.content = ENMLOfPlainText(task.note.rstrip())
             if self.options.get('ox_sourceURL', True):
@@ -43,16 +43,16 @@ class EvernoteFromOxTask(ThisFromThat):
         else:
             preserve = None
             if note.resources:
-                preserve = "resources"
+                preserve = 'resources'
             else:
                 if note.attributes.sourceURL:
                     if not re.search(task.ox.server, note.attributes.sourceURL, re.IGNORECASE):
-                        preserve = "source URL"
+                        preserve = 'source URL'
                 else:
                     if re.sub('\s', '', PlainTextOfENML(note.content), re.MULTILINE):
-                        preserve = "content"
+                        preserve = 'content'
             if preserve:
-                self.logger.info('%s: Found %s - preserving existing note content' % (self.class_name, preserve))
+                self.logger.debug(u'%s: Found %s - preserving existing note content' % (self.class_name, preserve))
             else:
                 content = task.note
                 if oxsync.options.get('evernote_iframe', 'False'):
@@ -60,7 +60,7 @@ class EvernoteFromOxTask(ThisFromThat):
                 if oxsync.options.get('evernote_link', 'False'):
                     content = ensync.remove_evernote_link(content, oxsync.options.get('evernote_link_tag', 'EVERNOTE'))
                 note.content = ENMLOfPlainText(content.rstrip())
-                self.logger.info('%s: Updating note content' % (self.class_name))
+                self.logger.debug(u'%s: Updating note content' % (self.class_name))
 
         # always update reminderTime
         attribute = self.options.get('ox_reminderTime','end_time')
@@ -71,7 +71,7 @@ class EvernoteFromOxTask(ThisFromThat):
             note.attributes.reminderTime = None
             note.attributes.reminderOrder = None
             reminderTime = 'None'
-        self.logger.info('%s: Updating note reminderTime from %s [%s]' % (self.class_name, attribute, reminderTime))
+        self.logger.debug(u'%s: Updating note reminderTime from %s [%s]' % (self.class_name, attribute, reminderTime))
 
         # update note reminder status from task status
         if OxTask.get_status(task.status) == 'Done':
@@ -86,29 +86,29 @@ class EvernoteFromOxTask(ThisFromThat):
             note.attributes.reminderTime = None
             note.attributes.reminderOrder = None
 
-            self.logger.info('%s: Updating reminder status from done task [%s]' %
+            self.logger.debug(u'%s: Updating reminder status from done task [%s]' %
                              (self.class_name, strflocal(completed)))
 
         # process categories and tags
         if task.categories:
-            self.logger.info('%s: Updating tags from categories %s' % (self.class_name, task.categories))
+            self.logger.debug(u'%s: Updating tags from categories %s' % (self.class_name, task.categories))
             note.tagGuids = []
             note.tagNames = task.tagNames
         else:
-            self.logger.info('%s: Removing tags from note' % (self.class_name))
+            self.logger.debug(u'%s: Removing tags from note' % (self.class_name))
             note.tagGuids = []
             note.tagNames = []
 
         if self.options.get('ox_status_tag'):
             if task.status:
                 tag = self.options['ox_status_tag'] + OxTask.get_status(int(task.status))
-                self.logger.info('%s: Add status tag %s to note' % (self.class_name, tag))
+                self.logger.debug(u'%s: Add status tag %s to note' % (self.class_name, tag))
                 note.tagNames.append(tag)
 
         if self.options.get('ox_priority_tag'):
             if task.priority:
                 tag = self.options['ox_priority_tag'] + OxTask.get_priority(int(task.priority))
-                self.logger.info('%s: Add priority tag %s to note' % (self.class_name, tag))
+                self.logger.debug(u'%s: Add priority tag %s to note' % (self.class_name, tag))
                 note.tagNames.append(tag)
 
         if self.options.get('ox_private_tag'):
@@ -120,12 +120,12 @@ class EvernoteFromOxTask(ThisFromThat):
             if task.private_flag:
                 note.tagNames.append(private_tag)
                 if not note_private_tag:
-                    self.logger.info('%s: Add private tag %s to note' % (self.class_name, private_tag))
+                    self.logger.debug(u'%s: Add private tag %s to note' % (self.class_name, private_tag))
             else:
                 if note_private_tag:
-                    self.logger.info('%s: Remove private tag %s from note' % (self.class_name, private_tag))
+                    self.logger.debug(u'%s: Remove private tag %s from note' % (self.class_name, private_tag))
 
         # perform the update
         note = self._engine._book.update_note(note)
-        self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(note.updated)))
+        self.logger.debug(u'%s: Updating completed with timestamp %s' % (self.class_name, strflocal(note.updated)))
         return note

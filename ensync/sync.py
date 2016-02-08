@@ -4,7 +4,7 @@
 import os, sys, time, json, re, requests, logging
 from pyutils import LogAdapter, strflocal, get_logger, utf8
 
-from pysync import Sync
+from pysync import Sync, SyncSessionError, SyncInitError, SyncError
 from enapi import *
 
 
@@ -47,13 +47,13 @@ class EnClientSync(Sync):
                     return EnClient.get_client(token=options['secrets']['token'],
                                                logger=_logger)
 
-        LogAdapter(_logger, {'package': 'ensync'}).error('Missing credentials in Evernote options!')
+        error = u'Missing credentials in Evernote options!'
+        LogAdapter(_logger, {'package': 'ensync'}).error(error)
+        raise SyncSessionError(error)
         return None
 
     def __init__(self, client, options, logger=None):
 
-        #self._name = options.get('notebook')
-        #self._guid = options.get('guid')
         self._key_attribute = options.get('key','title')
         self._book = None
         self._maxsize = None
@@ -73,10 +73,15 @@ class EnClientSync(Sync):
                 signature['guid'] = self._book.guid
                 self.options.update({'signature': signature})
             else:
-                self.logger.error('Evernote notebook [%s] not found' % (options.get('notebook')))
+                error = u'Evernote notebook [%s] not found' % (options.get('notebook'))
+                self.logger.error(error)
+                raise SyncInitError(error)
         else:
-            # self._book = self._client.notebook(self.signature.get('guid'))
-            pass
+            self._book = self._client.notebook(self.signature.get('guid'))
+            if self._book is None:
+                error = u'Evernote notebook [%s] not loaded' % (options.get(self.signature.get('guid')))
+                self.logger.error(error)
+                raise SyncInitError(error)
 
     def __repr__(self): return self.label
     # return 'EnClient:%s' % (self._name)
@@ -170,7 +175,7 @@ class EnClientSync(Sync):
 
             item = self._items.get(self._key)
             item_extra = item.get('extra')
-            self.logger.debug('%s: Checking extra attributes %s' % (self.class_name, item_extra))
+            self.logger.debug(u'%s: Checking extra attributes %s' % (self.class_name, item_extra))
 
             if sync_extra is not None and item_extra is not None:
                 if sync_extra.get('reminderTime') == item_extra.get('reminderTime'):
@@ -178,26 +183,45 @@ class EnClientSync(Sync):
                         if EnClientSync.compare_tags(sync_extra.get('tags'), item_extra.get('tags')):
                             return False
                         else:
-                            self.logger.info('%s: Tags changed' % (self.class_name))
+                            self.logger.debug(u'%s: Tags changed' % (self.class_name))
                     else:
-                        self.logger.info('%s: Reminder done time changed' % (self.class_name))
+                        self.logger.debug(u'%s: Reminder done time changed' % (self.class_name))
                 else:
-                    self.logger.info('%s: Reminder time changed' % (self.class_name))
+                    self.logger.debug(u'%s: Reminder time changed' % (self.class_name))
         return True
 
     def get(self):
-        #note = self._client.note_store.getNote(guid, True, True, True, True)
-        #nmd = self._client.get_note(self._key, self._name)
-        nmd = self._book.get_note(self.key)
+        # note = self._client.note_store.getNote(guid, True, True, True, True)
+        # nmd = self._client.get_note(self._key, self._name)
+        try:
+            nmd = self._book.get_note(self.key)
+        except Exception as e:
+            self.logger.exception(u'Note [%s] not found!' % (self.title))
+            return None
         return nmd
 
     def delete(self, sid=None):
-        self._client.delete_note(self.key)
+        try:
+            self._client.delete_note(self.key)
+        except Exception as e:
+            self.logger.exception(u'Note [%s] not found!' % (self.title))
+            return None
+        if sid is not None:
+            self._deleted[sid] = self._items[self.key]
         Sync.delete(self, sid)
 
     def create(self, other, sid=None):
         that = other.get()
-        note = EnNote(title=that.title)
-        self.logger.info('%s: Creating note [%s] from %s' % (self.class_name, that.title, other.class_name))
-        note = self._book.create_note(note)
-        return self.update(other, that, note, sid=sid)
+        if that:
+            note = EnNote(title=that.title)
+            self.logger.debug(u'%s: Creating note [%s] from %s' % (self.class_name, that.title, other.class_name))
+            try:
+                note = self._book.create_note(note)
+            except Exception as e:
+                self.logger.exception(u'Error creating note [%s]!' % (utf8(note.title)))
+                return None
+
+            if sid is not None:
+                self._created[sid] = note
+            return self.update(other, that, note, sid=sid)
+        return None

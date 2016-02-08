@@ -1,6 +1,6 @@
 import os
 
-__version__ = '0.9.5'
+__version__ = '1.0.0'
 __license__ = 'GPL2'
 __author__ = 'Bernd Strebel'
 
@@ -10,6 +10,7 @@ from .sync import ToodledoSync
 from .toodledo_from_ox import ToodledoFromOxTask
 from .toodledo_from_evernote import ToodledoFromEvernote
 __all__ = [
+
     'ToodledoSync',
     'ToodledoFromOxTask',
     'ToodledoFromEvernote'

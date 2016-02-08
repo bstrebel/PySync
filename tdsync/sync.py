@@ -4,9 +4,8 @@
 import os, sys, time, json, re, requests, logging
 from pyutils import LogAdapter, strflocal, get_logger, utf8, string
 
-from pysync import Sync
+from pysync import Sync, SyncError, SyncSessionError, SyncInitError
 from tdapi import ToodledoAPI, ToodledoTask
-
 
 class ToodledoSync(Sync):
 
@@ -52,13 +51,14 @@ class ToodledoSync(Sync):
                                                            client_secret=secrets['client_secret'],
                                                            logger=_logger)
                 else:
-                    msg = 'Missing secrets in Toodledo options'
+                    error = 'Missing secrets in Toodledo options'
             else:
-                msg = 'Missing cache specification in Toodledo options'
+                error = 'Missing cache specification in Toodledo options'
         else:
-            msg = 'Missing Toodledo options'
+            error = 'Missing Toodledo options'
 
-        LogAdapter(_logger, {'package': 'tdsync'}).error(msg)
+        LogAdapter(_logger, {'package': 'tdsync'}).error(error)
+        raise SyncSessionError(error)
         return None
 
     def __init__(self, client, options, logger=None):
@@ -85,7 +85,9 @@ class ToodledoSync(Sync):
                                  'id': self._folder['id']}
                     self.options.update({'signature': signature})
                 else:
-                    self.logger.error(u'Folder [%] not found!' % (utf8(folder)))
+                    error = u'Folder [%s] not found!' % (utf8(folder))
+                    self.logger.error(error)
+                    raise SyncInitError(error)
             else:
                 self.logger.warning(u'No folder specified in sync options')
         else:
@@ -139,14 +141,29 @@ class ToodledoSync(Sync):
 
     def create(self, other, sid=None):
         that = other.get()
-        self.logger.info(u'%s: Creating task [%s] from %s' % (self.class_name, utf8(that.title), other.class_name))
-        todo = self._client.create_task(title=that.title, folder=self.folder.id)
-        return self.update(other, that, todo, sid=sid)
+        if that:
+            self.logger.debug(u'%s: Creating task [%s] from %s' % (self.class_name, utf8(that.title), other.class_name))
+            todo = self._client.create_task(title=that.title, folder=self.folder.id)
+            return self.update(other, that, todo, sid=sid)
+        return None
 
-    def end_session(self, lr=None, opts=None):
-        if lr in ['left', 'right']:
-            self._client.end_session()
-            if self._client.tasks and self._client.tasks._created:
+    @classmethod
+    def end_session(cls, logger, **kwargs):
+        logger.debug(u'End session called for %s' % (cls))
+        # invalidate current session and clear caches
+        ToodledoAPI.set_session(None)
+
+    def commit_sync(self, lr, opts, logger):
+
+        # update server from cache
+        self._client.end_session()
+
+        # check for committed changes after API calls
+        # _deleted => items, that are really deleted on server
+        # _created => items, that are really created and mapped to new ids
+
+        if self._client.tasks:
+            if self._client.tasks._created:
                 # replace uuid from created tasks with toodledo server id
                 created = self._client.tasks._created
                 for sid in opts['sync']['map']:
@@ -155,8 +172,9 @@ class ToodledoSync(Sync):
                     if isinstance(uuid, str) and uuid in created:
                         item['id'] = created[uuid]['id']
                         item['time'] = created[uuid]['modified'] * 1000
+                    else:
+                        # remove from sync_map during check
+                        opts['sync']['map'][sid][lr] = None
+
                 self._client.tasks._created = {}
-        else:
-            # invalidate current session and clear caches
-            self._client.set_session(None)
         return opts

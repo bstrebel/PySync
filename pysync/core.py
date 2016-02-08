@@ -22,7 +22,7 @@ class PySync(object):
 
         self._adapter = LogAdapter(self._logger, {'package': 'pysync'})
 
-        self.logger.debug('Initalizing PySync with %s and %s ...' % (left, right))
+        self.logger.debug(u'Initalizing PySync with %s and %s ...' % (left, right))
 
         self._opts = opts
         self._left = left
@@ -78,15 +78,17 @@ class PySync(object):
         if sid not in sync:
             sync[sid] = {}
 
-        key = item.get('key')
+        if item is not None:
 
-        if key is not None:
-            if 'key' not in sync[sid]:
-                sync[sid]['key'] = key
-            del(item['key'])
+            key = item.get('key')
+
+            if key is not None:
+                if 'key' not in sync[sid]:
+                    sync[sid]['key'] = key
+                del(item['key'])
 
         sync[sid][lr] = item
-        #self.logger.debug('%s: %-5s %s %s' % (sid, lr, key, item))
+        #self.logger.debug(u'%s: %-5s %s %s' % (sid, lr, key, item))
 
 # region Test UTF-8 decoding
             # if isinstance(key, str):
@@ -112,14 +114,14 @@ class PySync(object):
         if left_right:
 
             engine = self._opts[self.reverse_map.get(left_right)]
-            self.logger.info('Running update for %s on the %s side ...' % (engine, self.reverse_map.get(left_right)))
+            self.logger.debug(u'Running update for %s on the %s side ...' % (engine, self.reverse_map.get(left_right)))
 
             for sid in self._sync['map']:
 
                 id = self._sync['map'][sid][left_right]['id']
 
-                self.logger.info('%s: Force update of [%s] at %s' % (id, self._sync['map'][sid]['key'], engine))
-                self.logger.debug('%s: %s' % (id, self._sync['map'][sid][left_right]))
+                self.logger.debug(u'%s: Force update of [%s] at %s' % (id, self._sync['map'][sid]['key'], engine))
+                self.logger.debug(u'%s: %s' % (id, self._sync['map'][sid][left_right]))
 
                 self._sync['map'][sid][left_right]['time'] = 0L
 
@@ -141,7 +143,7 @@ class PySync(object):
         if left_right:
 
             engine = self._opts[left_right]
-            self.logger.info('Running reset for %s on the %s side ...' % (engine, left_right))
+            self.logger.debug(u'Running reset for %s on the %s side ...' % (engine, left_right))
 
             if left_right == 'left':
                 sync = self._left
@@ -153,15 +155,15 @@ class PySync(object):
             for sid in self._sync['map']:
 
                 id = self._sync['map'][sid][left_right]['id']
-                self.logger.info('%s: Found [%s] at %s in sync map' % (id, self._sync['map'][sid]['key'], engine))
+                self.logger.debug(u'%s: Found [%s] at %s in sync map' % (id, self._sync['map'][sid]['key'], engine))
 
                 if id in sync:
                     # item exists
                     item = sync[id]
-                    self.logger.info('%s: Item deleted at %s' % (id, sync))
+                    # self.logger.debug(u'%s: Item deleted at %s' % (id, sync))
                     sync.delete(sid)
                 else:
-                    self.logger.info('%s: Skip missing item at %s' % (id, sync))
+                    self.logger.debug(u'%s: Skip missing item at %s' % (id, sync))
 
             self._sync['map'] = None
 
@@ -199,8 +201,8 @@ class PySync(object):
             self.sync = {}
             self._new_sync = None
 
-            self.logger.info('Initalizing [%s] sync map ...' % (self.direction))
-            self.logger.info('Checking left side: %s' % (self.left))
+            self.logger.debug(u'Initalizing [%s] sync map ...' % (self.direction))
+            self.logger.debug(u'Checking left side: %s' % (self.left))
             for key in left:
 
                 sid = str(uuid.uuid1())
@@ -210,23 +212,23 @@ class PySync(object):
                 guid = right.find_key(left[key]['key'])
                 if guid:
                     found[guid] = True
-                    self.logger.info('Found matching item [%s] at %s' % (left[key]['key'], self.right))
+                    self.logger.debug(u'Found matching item [%s] at %s' % (left[key]['key'], self.right))
                     self._add_item(sid, 'right', right.map_item(guid))
                 else:
                     # create missing item on right side
-                    self.logger.info('Create missing item [%s] at %s' % (left[key]['key'], self.right))
+                    self.logger.debug(u'Create missing item [%s] at %s' % (left[key]['key'], self.right))
                     item = right.create(left, sid)
                     self._add_item(sid, 'right', item)
 
             if self.bidirectional:
 
-                self.logger.info('Checking right side: %s' % (self.right))
+                self.logger.debug(u'Checking right side: %s' % (self.right))
                 for key in right:
 
                     if key not in found:
                         # new key on the right side
                         sid = str(uuid.uuid1())
-                        self.logger.info('Create missing item [%s] at %s' % (right[key]['key'], self.left))
+                        self.logger.debug(u'Create missing item [%s] at %s' % (right[key]['key'], self.left))
                         self._add_item(sid, 'right', right.map_item(key))
                         item = left.create(right, sid)
                         self._add_item(sid, 'left', item)
@@ -239,16 +241,16 @@ class PySync(object):
             """
             self._new_sync = {}
 
-            self.logger.info('Processing [%s] sync map ...' % (self.direction))
+            self.logger.debug(u'Processing [%s] sync map ...' % (self.direction))
 
             for sid in self.sync:
 
                 lid = self.sync[sid]['left']['id']
                 rid = self.sync[sid]['right']['id']
 
-                self.logger.info('%s: %s' % (sid, self.sync[sid]['key']) )
-                self.logger.debug('%s: %s %s' % (sid, self._left, self.sync[sid]['left']))
-                self.logger.debug('%s: %s %s' % (sid, self._right, self.sync[sid]['right']))
+                self.logger.debug(u'%s: %s' % (sid, self.sync[sid]['key']) )
+                self.logger.debug(u'%s: %s %s' % (sid, self._left, self.sync[sid]['left']))
+                self.logger.debug(u'%s: %s %s' % (sid, self._right, self.sync[sid]['right']))
 
                 if lid in left:
                     # left item exitst
@@ -257,7 +259,7 @@ class PySync(object):
                     # item deleted on left side
                     # => delete right item
                     if rid in right:
-                        self.logger.info('%s: Item deleted at %s' % (sid, self.left))
+                        self.logger.debug(u'%s: Item deleted at %s' % (sid, self.left))
                         right.delete(sid)
                     continue
 
@@ -269,7 +271,7 @@ class PySync(object):
                         # item deleted on right side
                         # => delete left item
                         if lid in left:
-                            self.logger.info('%s: Item deleted at %s' % (sid, self.right))
+                            self.logger.debug(u'%s: Item deleted at %s' % (sid, self.right))
                             left.delete(sid)
                     continue
 
@@ -281,32 +283,32 @@ class PySync(object):
                 rsync = self.sync[sid]['right']
 
                 if left.changed(lsync):
-                    self.logger.info('%s: Item changed at left %s' % (sid, self.left))
+                    self.logger.debug(u'%s: Item changed at left %s' % (sid, self.left))
                     if right.changed(rsync):
-                        self.logger.info('%s: Item also changed at right %s' % (sid, self.right))
+                        self.logger.debug(u'%s: Item also changed at right %s' % (sid, self.right))
                         if litem['time'] < ritem['time']:
-                            self.logger.info('%s: Item newer at right %s ' % (sid, self.right))
+                            self.logger.debug(u'%s: Item newer at right %s ' % (sid, self.right))
                             if self.bidirectional:
-                                self.logger.info('%s: Updating left item at %s' % (sid, self.left))
+                                self.logger.debug(u'%s: Updating left item at %s' % (sid, self.left))
                                 litem = left.update(right, sid=sid)
                             else:
-                                self.logger.info('%s: Undo changes for right item at %s' % (sid, self.right))
+                                self.logger.debug(u'%s: Undo changes for right item at %s' % (sid, self.right))
                                 ritem = right.update(left, sid=sid)
                         else:
-                            self.logger.info('%s: Item newer at left %s ' % (sid, self.left))
-                            self.logger.info('%s: Updating right item at %s' % (sid, self.right))
+                            self.logger.debug(u'%s: Item newer at left %s ' % (sid, self.left))
+                            self.logger.debug(u'%s: Updating right item at %s' % (sid, self.right))
                             ritem  = right.update(left, sid=sid)
                     else:
-                        self.logger.info('%s: Updating right item at %s' % (sid, self.right))
+                        self.logger.debug(u'%s: Updating right item at %s' % (sid, self.right))
                         ritem = right.update(left, sid=sid)
                 else:
                     if right.changed(rsync):
-                        self.logger.info('%s: Item changed at right %s' % (sid, self.right))
+                        self.logger.debug(u'%s: Item changed at right %s' % (sid, self.right))
                         if self.bidirectional:
-                            self.logger.info('%s: Updating left item at %s' % (sid, self.left))
+                            self.logger.debug(u'%s: Updating left item at %s' % (sid, self.left))
                             litem = left.update(right, sid=sid)
                         else:
-                            self.logger.info('%s: Undo changes for right item at %s' % (sid, self.right))
+                            self.logger.debug(u'%s: Undo changes for right item at %s' % (sid, self.right))
                             ritem = right.update(left, sid=sid)
 
                 self._add_item(sid, 'left', litem)
@@ -315,7 +317,7 @@ class PySync(object):
                 del left[lid]
                 del right[rid]
 
-            self.logger.info('Checking for new items at %s' % (self.left))
+            self.logger.debug(u'Checking for new items at %s' % (self.left))
             for key in left:
                 # new items on the left side
                 sid = str(uuid.uuid1())
@@ -324,11 +326,11 @@ class PySync(object):
                 self._add_item(sid, 'left', left.map_item())
                 self._add_item(sid, 'right', ritem)
 
-                self.logger.info('%s: [%s]' % (sid, self._new_sync[sid]['key']) )
-                self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
-                self.logger.info('%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
+                self.logger.debug(u'%s: [%s]' % (sid, self._new_sync[sid]['key']) )
+                self.logger.debug(u'%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
+                self.logger.debug(u'%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
 
-            self.logger.info('Checking for new items at %s' % (self.right))
+            self.logger.debug(u'Checking for new items at %s' % (self.right))
             for key in right:
                 # new items on the right side
                 if self.bidirectional:
@@ -338,15 +340,15 @@ class PySync(object):
                     self._add_item(sid, 'right', right.map_item())
                     self._add_item(sid, 'left', litem)
 
-                    self.logger.info('%s: [%s]' % (sid, self._new_sync[sid]['key']) )
-                    self.logger.info('%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
-                    self.logger.info('%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
+                    self.logger.debug(u'%s: [%s]' % (sid, self._new_sync[sid]['key']) )
+                    self.logger.debug(u'%s: %s %s' % (sid, self.left, self._new_sync[sid]['left']))
+                    self.logger.debug(u'%s: %s %s' % (sid, self.right, self._new_sync[sid]['right']))
                 else:
                     if self.unidirectional_strict:
-                        self.logger.debug('Deleting new item at right because of unidirectional strict: %s' % (right))
+                        self.logger.debug(u'Deleting new item at right because of unidirectional strict: %s' % (right))
                         right.delete(None)
                     else:
-                        self.logger.debug('Ignoring new item at right because auf unidirectional merge: %s' % (right))
+                        self.logger.debug(u'Ignoring new item at right because auf unidirectional merge: %s' % (right))
 
             self._sync['map'] = self._new_sync
 
@@ -467,28 +469,37 @@ def parse_config(relation, config, _logger):
 
     return Options(left), Options(right), Options(rel)
 
-
 def lock(relation, opts, _logger):
 
     logger = LogAdapter(_logger, {'package': 'lock'})
     map_file = os.path.expanduser(opts['map'])
     lck_file = os.path.splitext(map_file)[0] + '.lck'
     if os.path.isfile(lck_file):
-        logger.warning('Relation [%s] locked. Remove %s to unlock synchronization' % (relation, lck_file))
+        logger.error('Relation [%s] locked. Remove %s to unlock synchronization' % (relation, lck_file))
         return False
-    content = ''
     if os.path.isfile(map_file):
         with codecs.open(map_file, 'r', encoding='utf-8') as fp:
             content = fp.read()
-            fp.close()
+        logger.debug(u'Locking relation [%s]' % (relation))
+        with codecs.open(lck_file, 'w', encoding='utf-8') as fp:
+            fp.write(content)
     else:
-        content = '%s\n' % (strflocal())
+        open(lck_file, 'a').close()
+    return True
 
-    logger.info('Locking relation [%s]' % (relation))
-    with codecs.open(lck_file, 'w', encoding='utf-8') as fp:
-        fp.write(content)
-        fp.close()
-        return True
+def rollback(relation, opts, _logger):
+
+    logger = LogAdapter(_logger, {'package': 'rollback'})
+    map_file = os.path.expanduser(opts['map'])
+    lck_file = os.path.splitext(map_file)[0] + '.lck'
+    if os.path.isfile(lck_file):
+        with codecs.open(lck_file, 'r', encoding='utf-8') as fp:
+            content = fp.read()
+        logger.debug(u'Rollback relation [%s]' % (relation))
+        with codecs.open(map_file, 'w', encoding='utf-8') as fp:
+            fp.write(content)
+            os.remove(lck_file)
+            return True
 
     return False
 
@@ -498,17 +509,62 @@ def unlock(relation, opts, _logger):
     map_file = os.path.expanduser(opts['map'])
     lck_file = os.path.splitext(map_file)[0] + '.lck'
     if os.path.isfile(lck_file):
-        logger.info('Unlocking relation [%s]' % (relation))
+        logger.debug(u'Unlocking relation [%s]' % (relation))
         os.remove(lck_file)
         return True
     else:
         logger.warning('Lockfile %s for relation [%s] not found!' % (lck_file, relation))
         return False
 
+def check_sync_map(relation, left, right, relation_opts, logger):
+
+    remove = []
+
+    logger.debug(u'Checking sync map ...')
+
+    # check for incomplete sid entries without left or right entry
+    for sid in relation_opts['sync']['map']:
+        item = relation_opts['sync']['map'][sid]
+        OK = True
+        if item.get('left') is None:
+            logger.debug(u'Missing left entry for [%s]: %s' % (sid, item.get('key')))
+            OK = False
+        if item.get('right') is None:
+            logger.debug(u'Missing right entry for [%s]: %s' % (sid, item.get('key')))
+            OK = False
+        if not OK:
+            remove.append(sid)
+
+    # check for deleted entries in sync map
+    for sync in [left, right]:
+        for sid in sync._deleted:
+            if sid in relation_opts['sync']['map']:
+                item = relation_opts['sync']['map'][sid]
+                logger.debug(u'Removing deleted entry [%s]: %s' % (sid, item.get('key')))
+                remove.append(sid)
+
+    if remove:
+        logger.error(u'Repairing sync map ...')
+        for sid in set(remove):
+            if sid in relation_opts['sync']['map']:
+                logger.error(u'Removing [%s]: %s' % (sid, relation_opts['sync']['map'][sid].get('key')))
+                del(relation_opts['sync']['map'][sid])
+
+    relation_opts['sync']['relation'] = relation
+    relation_opts['sync']['left'] = left.options.signature
+    relation_opts['sync']['right'] = right.options.signature
+    relation_opts['sync']['time'] = strflocal()
+
+    with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
+        json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')
+
+    return len(relation_opts['sync']['map']), len(remove)
+
 def main():
 
     from argparse import ArgumentParser
     from pysync import __version__, __author__
+    from pysync import SyncError, SyncSessionError, SyncInitError
 
     options = {
         'secrets': '~/.pysync.secrets',
@@ -546,7 +602,7 @@ def main():
     logging.getLogger('requests').setLevel(log_level(opts.loglevel_requests))
     logging.getLogger('urllib3').setLevel(log_level(opts.loglevel_requests))
 
-    logger.info('Parsing configuration file %s' % (opts.config_file))
+    logger.debug(u'Parsing configuration file %s' % (opts.config_file))
 
     if opts.relations:
         relations = list(opts.relations.split(','))
@@ -556,74 +612,113 @@ def main():
 
 # endregion
 
-    sessions = {}
-
     for relation in relations:
 
-        left_opts, right_opts, relation_opts = parse_config(relation, config, opts.logger)
-
-        # initialise web service sessions via @staticmethod session()
-
-        left_session = left_opts['class'].session(left_opts, opts.logger)
-        if not left_session:
-            logger.critical("Session initialization for %s failed!" % (left_opts['class']))
-            exit(3)
-
-        right_session = right_opts['class'].session(right_opts, opts.logger)
-        if not right_session:
-            logger.critical("Session initialization for %s failed!" % (right_opts['class']))
-            exit(3)
-
-        # TODO: store sessions for shared usage
-
-        # initialize sync engine classes
-        left = left_opts['class'](left_session, left_opts, logger=opts.logger)
-        right = right_opts['class'](right_session, right_opts, logger=opts.logger)
-
-        # initialize sync map
-        relation_opts['sync'] = {'map': None}
+        try:
+            left_opts, right_opts, relation_opts = parse_config(relation, config, opts.logger)
+        except Exception as e:
+            logger.exception('Error parsing configuration options. Skipping sync for [%s]' % (relation))
+            continue
 
         if lock(relation, relation_opts, opts.logger):
 
+            # initialise web service sessions via @staticmethod session()
+            # and initialize sync engine classes
+            try:
+                label = left_opts.get('label')
+                left_session = left_opts['class'].session(left_opts, opts.logger)
+                label = right_opts.get('label')
+                right_session = right_opts['class'].session(right_opts, opts.logger)
+            except Exception as e:
+                # TODO: check exception type, unlock() only in case of an temp. network error etc.
+                logger.exception('Session initialization for [%s] failed! Skipping sync for [%s]' % (label, relation))
+                # unlock(relation, relation_opts, opts.logger)
+                continue
+
+            # initialize sync map
+            relation_opts['sync'] = {'map': None}
+
             if os.path.isfile(relation_opts['map']):
+
+                ####################
+                # incremental sync #
+                ####################
 
                 with codecs.open(relation_opts['map'], 'r', encoding='utf-8') as fp:
                     relation_opts['sync'] = json.load(fp)
 
-                os.remove(relation_opts['map'])
+                logger.info(u'%s: starting incremental sync for %d items' % (relation, len(relation_opts['sync'].get('map'))))
 
-                left.options.update({'signature': relation_opts['sync']['left']})
-                right.options.update({'signature': relation_opts['sync']['right']})
+                # merge signature from map file
+                left_opts.update({'signature': relation_opts['sync']['left']})
+                right_opts.update({'signature': relation_opts['sync']['right']})
+
+                try:
+                    left = left_opts['class'](left_session, left_opts, logger=opts.logger)
+                    right = right_opts['class'](right_session, right_opts, logger=opts.logger)
+                except Exception as e:
+                    # TODO: check exception type, unlock() only in case of an temp. network error etc.
+                    logger.exception('Engine initialization for [%s] failed! Skipping sync for [%s]' % (label, relation))
+                    # unlock(relation, relation_opts, opts.logger)
+                    continue
 
                 if opts['update']:
-                    relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).update(opts['update'])
+                    try:
+                        relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).update(opts['update'])
+                    except Exception as e:
+                        logger.exception('Unexpected error when processing update option! Skipping sync for [%s]' % relation)
+                        unlock(relation, relation_opts, opts.logger)
+                        continue
 
                 if opts.reset:
-                    relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).reset(opts.reset)
+                    try:
+                        relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).reset(opts.reset)
+                    except Exception as e:
+                        logger.exception('Unexpected error when processing reset option!')
+                        check_sync_map(relation, left, right, relation_opts, logger)
+                        continue
 
                 if opts.rebuild:
                     relation_opts['sync'] = {'map': None}
 
-            relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
+            else:
 
-            if relation_opts['sync']:
+                ################
+                # initial sync #
+                ################
 
-                relation_opts['sync']['relation'] = relation
-                relation_opts['sync']['left'] = left.options.signature
-                relation_opts['sync']['right'] = right.options.signature
-                relation_opts['sync']['time'] = strflocal()
+                logger.info(u'%s: Starting initial sync' % (relation))
 
-                # check/modify sync map by backend engine
-                relation_opts = left.end_session('left', relation_opts)
-                relation_opts = right.end_session('right', relation_opts)
+                for opt in ['update', 'reset', 'rebuild']:
+                    if opts.get(opt):
+                        logger.warning('Ignoring option [%s] for initial sync' % (opt))
 
-                with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
-                    json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')
+                try:
+                    left = left_opts['class'](left_session, left_opts, logger=opts.logger)
+                    right = right_opts['class'](right_session, right_opts, logger=opts.logger)
+                except Exception as e:
+                    # TODO: check exception type, unlock() only in case of an temp. network error etc.
+                    logger.exception('Engine initialization for [%s] failed! Skipping sync for [%s]' % (label, relation))
+                    # unlock(relation, relation_opts, opts.logger)
+                    continue
 
-            unlock(relation, relation_opts, opts.logger)
+            try:
+                relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
+            except Exception as e:
+                logger.exception('Unexpected error when processing sync map!')
+                check_sync_map(relation, left, right, relation_opts, logger)
+                continue
 
-        left.end_session()
-        right.end_session()
+            # check/modify sync map by backend engine
+            relation_opts = left.commit_sync('left', relation_opts, logger)
+            relation_opts = right.commit_sync('right', relation_opts, logger)
+            count, errors = check_sync_map(relation, left, right, relation_opts, logger)
+            unlock(relation, relation_opts, logger)
+            logger.info(u'%s: finished sync for %d items with %d errors' % (relation, count, errors))
+
+
+            left_opts['class'].end_session(logger)
+            right_opts['class'].end_session(logger)
 
 # region __Main__
 

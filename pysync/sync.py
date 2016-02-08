@@ -2,9 +2,18 @@
 # -*- coding: utf-8 -*-
 
 import os, sys, time, logging, json
-from pyutils import LogAdapter, get_logger, strflocal
+from pyutils import LogAdapter, get_logger, strflocal, utf8
 
 from abc import ABCMeta, abstractmethod, abstractproperty
+
+class SyncError(Exception):
+    pass
+
+class SyncSessionError(SyncError):
+    pass
+
+class SyncInitError(SyncError):
+    pass
 
 class Sync(object):
 
@@ -26,6 +35,9 @@ class Sync(object):
         self._filter_expr = options.get('filter_expr')
         self._filter_module = options.get('filter_module')
 
+        self._deleted = {}
+        self._modified = {}
+        self._created = {}
 
     def __repr__(self): return self.label
 
@@ -49,9 +61,18 @@ class Sync(object):
     @property
     def items(self): return self._items
 
+    @property
+    def key(self): return self._key
+
+    @property
+    def title(self):
+        if self._items.get(self._key) and self._items[self._key].get('key'):
+            return utf8(self._items[self._key]['key'])
+        return None
+
     def _add_item(self, id, item):
             self._items[id] = item
-            self.logger.debug('%s %s %s' % (self.class_name, id, item))
+            self.logger.debug(u'%s %s %s' % (self.class_name, id, item))
 
     @abstractmethod
     def map_item(self, key=None):
@@ -90,10 +111,13 @@ class Sync(object):
         if key is None: key = self._key
         return json.dumps(self._items[key], ensure_ascii=False, encoding='utf-8')
 
-    @property
-    def key(self): return self._key
 
-    def end_session(self, lr=None, opts=None):
+    @classmethod
+    def end_session(cls, logger, **kwargs):
+        if logger:
+            logger.debug(u'End session called for [%s]' % (cls))
+
+    def commit_sync(self, lr, opts, logger):
         return opts
 
     def _check_filter(self, item):
@@ -121,33 +145,35 @@ class Sync(object):
     def update(self, other, that=None, this=None, sid=None):
 
         from pysync import OxTaskSync, EnClientSync, ToodledoSync
-
         from oxsync import OxTaskFromEvernote, OxTaskFromToodldo
-
         from tdsync import ToodledoFromOxTask, ToodledoFromEvernote
-
         from ensync import EvernoteFromOxTask, EvernoteFromToodledo
 
-        if isinstance(self, ToodledoSync):
-            if isinstance(other, OxTaskSync):
-                return self.map_item(ToodledoFromOxTask(self, other).update(other, that=that, this=this, sid=sid))
-            if isinstance(other, EnClientSync):
-                return self.map_item(ToodledoFromEvernote(self, other).update(other, that=that, this=this, sid=sid))
+        try:
+            if isinstance(self, ToodledoSync):
+                if isinstance(other, OxTaskSync):
+                    return self.map_item(ToodledoFromOxTask(self, other).update(other, that=that, this=this, sid=sid))
+                if isinstance(other, EnClientSync):
+                    return self.map_item(ToodledoFromEvernote(self, other).update(other, that=that, this=this, sid=sid))
 
-        if isinstance(self, EnClientSync):
-            if isinstance(other, OxTaskSync):
-                return self.map_item(EvernoteFromOxTask(self, other).update(other, that=that, this=this, sid=sid))
-            if isinstance(other, ToodledoSync):
-                return self.map_item(EvernoteFromToodledo(self, other).update(other, that=that, this=this, sid=sid))
+            if isinstance(self, EnClientSync):
+                if isinstance(other, OxTaskSync):
+                    return self.map_item(EvernoteFromOxTask(self, other).update(other, that=that, this=this, sid=sid))
+                if isinstance(other, ToodledoSync):
+                    return self.map_item(EvernoteFromToodledo(self, other).update(other, that=that, this=this, sid=sid))
 
-        if isinstance(self, OxTaskSync):
-            if isinstance(other, EnClientSync):
-                return self.map_item(OxTaskFromEvernote(self, other).update(other, that=that, this=this, sid=sid))
-            if isinstance(other, ToodledoSync):
-                return self.map_item(OxTaskFromToodldo(self, other).update(other, that=that, this=this, sid=sid))
+            if isinstance(self, OxTaskSync):
+                if isinstance(other, EnClientSync):
+                    return self.map_item(OxTaskFromEvernote(self, other).update(other, that=that, this=this, sid=sid))
+                if isinstance(other, ToodledoSync):
+                    return self.map_item(OxTaskFromToodldo(self, other).update(other, that=that, this=this, sid=sid))
+        except Exception as e:
+            self.logger.exception('Update failed. Check stack trace for details!')
+            return None
 
         else:
-            self.logger.error('%s: Updating from [%s] not supported' % (self.class_name, other.class_name))
+            error = u'%s: Updating from [%s] not supported' % (self.class_name, other.class_name)
+            self.logger.error(error)
 
     @abstractmethod
     def get(self):
@@ -155,7 +181,7 @@ class Sync(object):
 
     @abstractmethod
     def delete(self, sid=None):
-        self.logger.info('%s: Delete %s' % (self.class_name, self.dump_item()))
+        self.logger.debug(u'%s: Delete %s' % (self.class_name, self.dump_item()))
         if sid is not None:
             del self._items[self.key]
 

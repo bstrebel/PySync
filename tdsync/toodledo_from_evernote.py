@@ -65,7 +65,7 @@ class ToodledoFromEvernote(ThisFromThat):
         title = utf8(note.title)
         if title != todo.title:
             todo.title = title
-            self.logger.info('Title changed to [%s]' % (title))
+            self.logger.debug(u'Title changed to [%s]' % (title))
 
         ########################
         # process task content #
@@ -73,15 +73,15 @@ class ToodledoFromEvernote(ThisFromThat):
 
         content = ''
         if note.contentLength > maxsize:
-            self.logger.info('%s: Evernote content exceeds limit of %d KB!' % (self.class_name, maxsize/1024))
-            content += "Evernote content exceeds limit of %d KB!\n" % (maxsize/1024)
+            self.logger.debug(u'%s: Evernote content exceeds limit of %d KB!' % (self.class_name, maxsize/1024))
+            content += 'Evernote content exceeds limit of %d KB!\n' % (maxsize/1024)
         else:
             content += note.plain.strip() + '\n\n'
 
         if self.options.get('evernote_sourceURL', True):
             if note.attributes.sourceURL:
                 if not note.attributes.sourceURL.startswith(server_url):
-                    self.logger.info('%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
+                    self.logger.debug(u'%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
                     content += 'SOURCE: %s\n\n' % (note.attributes.sourceURL)
 
         if self.options.get('evernote_link', True):
@@ -95,7 +95,7 @@ class ToodledoFromEvernote(ThisFromThat):
         content = utf8(content) or u''
         if content != todo.note:
             todo.note = content
-            # self.logger.info('Note changed to [%s]' % (content[:16]))
+            # self.logger.debug(u'Note changed to [%s]' % (content[:16]))
 
         ############################
         # process other attributes #
@@ -117,7 +117,7 @@ class ToodledoFromEvernote(ThisFromThat):
                 todo['duedate'] = todo['duetime']
             if attribute == 'starttime':
                 todo['startdate'] = todo['starttime']
-            self.logger.info('%s: Updating [%s] from note reminderTime [%s]' %
+            self.logger.debug(u'%s: Updating [%s] from note reminderTime [%s]' %
                              (self.class_name, attribute, strflocal(note.attributes.reminderTime, None)))
 
         # always update reminderDoneTime and task status
@@ -130,21 +130,21 @@ class ToodledoFromEvernote(ThisFromThat):
 
         tags = []
 
-        self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
+        self.logger.debug(u'%s: Updating categories from tags %s' % (self.class_name, note.categories))
 
         for tag in note.tags:
             if tag == tdsync.options.get('evernote_tag_star', ','):
                 todo.star = True
-                self.logger.info('Set toodledo star from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo star from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('evernote_tag_context', ',')):
                 todo.context = tag[1:]
-                self.logger.info('Set toodledo context from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo context from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('evernote_tag_goal', ',')):
                 todo.goal = tag[1:]
-                self.logger.info('Set toodledo goal from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo goal from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('evernote_tag_location', ',')):
                 todo.location = tag[1:]
-                self.logger.info('Set toodledo location from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo location from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('evernote_tag_status', ',')):
                 if tag[1:] not in ToodledoTask.STATUS:
                     if self.status_map.get(tag[1:]) is None:
@@ -154,7 +154,7 @@ class ToodledoFromEvernote(ThisFromThat):
                         status = self.status_map.get(tag[1:])
                 else:
                     status = ToodledoTask.STATUS.index(tag[1:])
-                    self.logger.info('Set toodledo status from [%s]' % (tag))
+                    self.logger.debug(u'Set toodledo status from [%s]' % (tag))
                 todo.status = status
             elif tag.startswith(tdsync.options.get('evernote_tag_priority', ',')):
                 priority = ToodledoTask.PRIORITY.get(tag[1:])
@@ -162,11 +162,11 @@ class ToodledoFromEvernote(ThisFromThat):
                     self.logger.warning('Change unknown priority tag [%s] to [Low]' % (tag))
                     priority = ToodledoTask.PRIORITY.get(tag[1:], 'Low')
                 else:
-                    self.logger.info('Set toodledo priority [%s] from [%s]' % (priority, tag))
+                    self.logger.debug(u'Set toodledo priority [%s] from [%s]' % (priority, tag))
                 todo.priority = priority
             else:
                 tags.append(utf8(tag))
-                self.logger.info(u'Set toodledo tag from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo tag from [%s]' % (tag))
 
         todo.tag = u''
         if len(tags) > 0:

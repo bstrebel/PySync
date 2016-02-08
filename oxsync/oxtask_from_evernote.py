@@ -48,12 +48,12 @@ class OxTaskFromEvernote(ThisFromThat):
         if self.options.get('evernote_sourceURL', True):
             if note.attributes.sourceURL:
                 if not note.attributes.sourceURL.startswith(ox.server):
-                    self.logger.info('%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
-                    content += "SOURCE: %s\n" % (note.attributes.sourceURL)
+                    self.logger.debug(u'%s: Updating content with source URL %s' % (self.class_name, note.attributes.sourceURL))
+                    content += 'SOURCE: %s\n' % (note.attributes.sourceURL)
 
         if note.contentLength > maxsize:
-            self.logger.info('%s: Evernote content exceeds limit of %d KB!' % (self.class_name, maxsize/1024))
-            content += "Evernote content exceeds limit of %d KB!" % (maxsize/1024)
+            self.logger.debug(u'%s: Evernote content exceeds limit of %d KB!' % (self.class_name, maxsize/1024))
+            content += 'Evernote content exceeds limit of %d KB!' % (maxsize/1024)
         else:
             content += note.plain
 
@@ -75,7 +75,7 @@ class OxTaskFromEvernote(ThisFromThat):
         newtime = strflocal(note.attributes.reminderTime) if note.attributes.reminderTime is not None else 'None'
         attribute = self.options.get('evernote_reminderTime', 'end_date')
         task._data[attribute] = note.attributes.reminderTime
-        self.logger.info('%s: Updating %s from note reminderTime [%s]' %
+        self.logger.debug(u'%s: Updating %s from note reminderTime [%s]' %
                          (self.class_name, attribute, newtime))
 
         # always update reminderDoneTime and task status
@@ -94,20 +94,20 @@ class OxTaskFromEvernote(ThisFromThat):
 
         attribute = self.options.get('evernote_reminderDoneTime', 'date_completed')
         task._data[attribute] = note.attributes.reminderDoneTime
-        self.logger.info('%s: Updating task %s from note reminderDoneTime [%s]' %
+        self.logger.debug(u'%s: Updating task %s from note reminderDoneTime [%s]' %
                          (self.class_name, attribute, newtime))
 
         task._data['status'] = newstatus
 
         if newstatus != oldstatus:
-            self.logger.info('%s: Updating task status from [%s] to [%s]' %
+            self.logger.debug(u'%s: Updating task status from [%s] to [%s]' %
                              (self.class_name, OxTask.get_status(oldstatus), OxTask.get_status(newstatus)))
 
         ######################
         # process categories #
         ######################
 
-        self.logger.info('%s: Updating categories from tags %s' % (self.class_name, note.categories))
+        self.logger.debug(u'%s: Updating categories from tags %s' % (self.class_name, note.categories))
 
         status_prefix = None
         status_now = task.status
@@ -137,19 +137,19 @@ class OxTaskFromEvernote(ThisFromThat):
 
                 status_new = OxTask.get_status(tag[1:].lower())
                 if status_now != status_new:
-                    self.logger.info('%s: Updating task status to [%s]' % (self.class_name, OxTask.get_status(status_new)))
+                    self.logger.debug(u'%s: Updating task status to [%s]' % (self.class_name, OxTask.get_status(status_new)))
 
             elif priority_prefix and tag.startswith(priority_prefix):
 
                 priority_new = OxTask.get_priority(tag[1:].lower())
                 if priority_now != priority_new:
-                    self.logger.info('%s: Updating task priority to [%s]' % (self.class_name, OxTask.get_priority(priority_new)))
+                    self.logger.debug(u'%s: Updating task priority to [%s]' % (self.class_name, OxTask.get_priority(priority_new)))
 
             elif private_tag and tag == private_tag:
 
                     private_new = True
                     if private_now != private_new:
-                        self.logger.info('%s: Updating private flag to [%s]' % (self.class_name, private_new))
+                        self.logger.debug(u'%s: Updating private flag to [%s]' % (self.class_name, private_new))
             else:
                 categories.append(tag)
 
@@ -172,6 +172,6 @@ class OxTaskFromEvernote(ThisFromThat):
         task = task.update()
         task.load()
         # timestamp from api request is UTC: don't add self._utc_offset
-        self.logger.info('%s: Updating completed with timestamp %s' % (self.class_name, strflocal(task.timestamp)))
+        self.logger.debug(u'%s: Updating completed with timestamp %s' % (self.class_name, strflocal(task.timestamp)))
         return task
 

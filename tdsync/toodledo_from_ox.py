@@ -74,7 +74,7 @@ class ToodledoFromOxTask(ThisFromThat):
         title = task.title
         if title != todo.title:
             todo.title = title
-            self.logger.info('Title changed to [%s]' % (title))
+            self.logger.debug(u'Title changed to [%s]' % (title))
 
         note = task.note or u''
         if note != todo.note:
@@ -92,28 +92,28 @@ class ToodledoFromOxTask(ThisFromThat):
         if startdate:
             startdate = startdate - (startdate % DAY) + TD_UTC_TIME
         if startdate != todo.startdate:
-            self.logger.info('Start date changed to [%s]' % (strflocal(startdate, None)))
+            self.logger.debug(u'Start date changed to [%s]' % (strflocal(startdate, None)))
         todo.startdate = startdate
 
         starttime = 0
         if task.full_time is not None and task.full_time == False:
             starttime = task._start_time_utc or 0
         if starttime != todo.starttime:
-            self.logger.info('Start time changed to [%s]' % (strflocal(starttime,None)))
+            self.logger.debug(u'Start time changed to [%s]' % (strflocal(starttime,None)))
         todo.starttime = starttime
 
         duedate = task._end_date or 0
         if duedate:
             duedate = duedate - (duedate % DAY) + TD_UTC_TIME
         if duedate != todo.duedate:
-            self.logger.info('Due date changed to [%s]' % (strflocal(duedate, None)))
+            self.logger.debug(u'Due date changed to [%s]' % (strflocal(duedate, None)))
         todo.duedate = duedate
 
         duetime = 0
         if task.full_time is not None and task.full_time == False:
             duetime = task._end_time_utc or 0
         if duetime != todo.duetime:
-            self.logger.info('Due time changed to [%s]' % (strflocal(duetime, None)))
+            self.logger.debug(u'Due time changed to [%s]' % (strflocal(duetime, None)))
         todo.duetime = duetime
 
         remind = 0
@@ -122,15 +122,14 @@ class ToodledoFromOxTask(ThisFromThat):
             if seconds > 0:
                 remind = seconds/60
             if remind != todo.remind:
-                self.logger.info('Set reminder to %d minutes [%s]' % (remind, strflocal(task._alarm_date, None)))
+                self.logger.debug(u'Set reminder to %d minutes [%s]' % (remind, strflocal(task._alarm_date, None)))
         todo.remind = remind
 
         if task.status:
             status = self.status_map[task.status]
             if status != todo.status:
                 todo.status = status
-                #self.logger.info('Status changed to [%s]' % (ToodledoTask.STATUS[todo.status]))
-                self.logger.info('Status changed to [%s]' % (todo.status))
+                self.logger.debug(u'Status changed to [%s]' % (todo.status))
         else:
             todo.status = 0
 
@@ -138,8 +137,7 @@ class ToodledoFromOxTask(ThisFromThat):
             priority = self.priority_map[int(task.priority)]
             if priority != todo.priority:
                 todo.priority = priority
-                #self.logger.info('Priority changed to [%s]' % (ToodledoTask.PRIORITY[todo.priority]))
-                self.logger.info('Priority changed to [%s]' % (todo.priority))
+                self.logger.debug(u'Priority changed to [%s]' % (todo.priority))
         else:
             todo.priority = 0
 
@@ -149,25 +147,25 @@ class ToodledoFromOxTask(ThisFromThat):
         for tag in task.tag_names():
             if tag == tdsync.options.get('ox_tag_star', ','):
                 todo.star = True
-                self.logger.info('Set toodledo star from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo star from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('ox_tag_context', ',')):
                 todo.context = tag[1:]
-                self.logger.info('Set toodledo context from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo context from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('ox_tag_goal', ',')):
                 todo.goal = tag[1:]
-                self.logger.info('Set toodledo goal from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo goal from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('ox_tag_location', ',')):
                 todo.location = tag[1:]
-                self.logger.info('Set toodledo location from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo location from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('ox_tag_status', ',')):
                 todo.status = ToodledoTask.STATUS.index(tag[1:])
-                self.logger.info('Set toodledo status from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo status from [%s]' % (tag))
             elif tag.startswith(tdsync.options.get('ox_tag_priority', ',')):
                 todo.prority = ToodledoTask.PRIORITY[tag[1:]]
-                self.logger.info('Set toodledo priority from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo priority from [%s]' % (tag))
             else:
                 tags.append(tag)
-                self.logger.info('Set toodledo tag from [%s]' % (tag))
+                self.logger.debug(u'Set toodledo tag from [%s]' % (tag))
 
         if len(tags) > 0:
             todo.tag = ','.join(tags)[:250]
@@ -188,9 +186,9 @@ class ToodledoFromOxTask(ThisFromThat):
 
         if completed != todo.completed:
             if completed:
-                self.logger.info('Set task completed at [%s]' % (strflocal(completed)))
+                self.logger.debug(u'Set task completed at [%s]' % (strflocal(completed)))
             else:
-                self.logger.info('Reset completed date according to status [%s]' % (OxTask.get_status(task.status)))
+                self.logger.debug(u'Reset completed date according to status [%s]' % (OxTask.get_status(task.status)))
 
         todo.completed = completed
         return todo

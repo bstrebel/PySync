@@ -30,17 +30,37 @@ class ThisFromThat(object):
 
     def update(self, other, that=None, this=None, sid=None):
 
+        from pysync import SyncError
+
         self._update = True if this is None else False
 
         if self._update:
 
-            # assert: refernce == child of Sync class
+            # assert: reference == child of Sync class
             self._other = other
-            that = self._other.get()
-            this = self._engine.get()
-            # TODO: check return, raise exception (?)
+
+            try:
+                error = u'Error loading item from [%s]' % (self._other.label)
+                that = self._other.get()
+            except  Exception as e:
+                that = None
+                self.logger.exception(error)
+            if that is None:
+                raise SyncError(error)
+                return None, None
+
+            try:
+                error = u'Error loading item from [%s]' % (self._engine.label)
+                this = self._engine.get()
+            except  Exception as e:
+                this = None
+                self.logger.exception(error)
+            if this is None:
+                raise SyncError(error)
+                return None, None
+
             title = this.title if isinstance(this.title, unicode) else this.title.decode('utf-8')
-            self.logger.info(u'%s: Updating [%s] from %s' % (self.class_name, title, other.class_name))
+            self.logger.debug(u'%s: Updating [%s] from %s' % (self.class_name, title, other.class_name))
 
         # TODO: check todo, raise exception (?)
         return that, this

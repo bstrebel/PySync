@@ -1,6 +1,6 @@
 import os
 
-__version__ = '0.4.3'
+__version__ = '1.0.0'
 __license__ = 'GPL2'
 __author__ = 'Bernd Strebel'
 
@@ -16,5 +16,3 @@ __all__ = [
     'OxTaskFromEvernote',
     'OxTaskFromToodldo'
 ]
-
-
