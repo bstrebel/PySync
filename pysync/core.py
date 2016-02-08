@@ -568,8 +568,8 @@ def main():
 
     options = {
         'secrets': '~/.pysync.secrets',
-        'loglevel_requests': 'ERROR',
-        'loglevel': 'INFO'
+        'loglevel_requests': 'ERROR'
+        # 'loglevel': 'INFO'
     }
 
 # region Command line arguments
