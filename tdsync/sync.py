@@ -169,12 +169,13 @@ class ToodledoSync(Sync):
                 for sid in opts['sync']['map']:
                     item = opts['sync']['map'][sid][lr]
                     uuid = item['id']
-                    if isinstance(uuid, str) and uuid in created:
-                        item['id'] = created[uuid]['id']
-                        item['time'] = created[uuid]['modified'] * 1000
-                    else:
-                        # remove from sync_map during check
-                        opts['sync']['map'][sid][lr] = None
+                    if isinstance(uuid, str):
+                        if uuid in created:
+                            item['id'] = created[uuid]['id']
+                            item['time'] = created[uuid]['modified'] * 1000
+                        else:
+                            # create failed, remove from sync_map during check
+                            opts['sync']['map'][sid][lr] = None
 
                 self._client.tasks._created = {}
         return opts
