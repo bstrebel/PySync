@@ -64,7 +64,6 @@ class PySync(object):
     def unidirectional_strict(self):
         return isinstance(self.opts['unidirectional'], str) and self.opts['unidirectional'].lower() == 'strict'
 
-
     @property
     def sync(self): return self._sync['map']
 
@@ -89,18 +88,6 @@ class PySync(object):
 
         sync[sid][lr] = item
         #self.logger.debug(u'%s: %-5s %s %s' % (sid, lr, key, item))
-
-# region Test UTF-8 decoding
-            # if isinstance(key, str):
-            #     sync[sid]['key'] = key.decode('utf-8')
-            # else:
-            #     sync[sid]['key'] = key
-
-            # if 'key' in sync[sid]:
-            #     if key != sync[sid]['key']:
-            #         self.logger.warning('%s: Found different keys [%s] <> [%s]' % (sid, key, sync[sid]['key']))
-            # else:
-# endregion
 
     def update(self, update):
 
@@ -714,6 +701,8 @@ def main():
             relation_opts = right.commit_sync('right', relation_opts, logger)
             count, errors = check_sync_map(relation, left, right, relation_opts, logger)
             unlock(relation, relation_opts, logger)
+            logger.info(u'%s: %s %s' % (relation, left.label, left._changes))
+            logger.info(u'%s: %s %s' % (relation, right.label, right._changes))
             logger.info(u'%s: finished sync for %d items with %d errors' % (relation, count, errors))
 
 

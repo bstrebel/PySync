@@ -39,6 +39,8 @@ class Sync(object):
         self._modified = {}
         self._created = {}
 
+        self._changes = {'deleted': 0, 'created': 0, 'modified': 0}
+
     def __repr__(self): return self.label
 
     def __str__(self): return self.label
@@ -117,8 +119,7 @@ class Sync(object):
         if logger:
             logger.debug(u'End session called for [%s]' % (cls))
 
-    def commit_sync(self, lr, opts, logger):
-        return opts
+    def commit_sync(self, lr, opts, logger):  return opts
 
     def _check_filter(self, item):
         ok = False
@@ -131,16 +132,13 @@ class Sync(object):
         return ok
 
     @abstractproperty
-    def need_last_map(self):
-        return False
+    def need_last_map(self): return False
 
     @abstractmethod
-    def sync_map(self, last=None):
-        return None
+    def sync_map(self, last=None): return None
 
     @abstractmethod
-    def create(self, that, sid=None):
-        return None, None
+    def create(self, that, sid=None): return None, None
 
     def update(self, other, that=None, this=None, sid=None):
 
@@ -148,6 +146,11 @@ class Sync(object):
         from oxsync import OxTaskFromEvernote, OxTaskFromToodldo
         from tdsync import ToodledoFromOxTask, ToodledoFromEvernote
         from ensync import EvernoteFromOxTask, EvernoteFromToodledo
+
+        if this is None:
+            self._changes['modified'] += 1
+        else:
+            self._changes['created'] += 1
 
         try:
             if isinstance(self, ToodledoSync):
@@ -184,6 +187,7 @@ class Sync(object):
         self.logger.debug(u'%s: Delete %s' % (self.class_name, self.dump_item()))
         if sid is not None:
             del self._items[self.key]
+        self._changes['deleted'] += 1
 
     @abstractmethod
     def changed(self, sync):
