@@ -51,7 +51,7 @@ class PySync(object):
     @property
     def unidirectional(self):
         # return bool(self.opts.get('unidirectional'))
-        false = ['false', 'off', '0', 'none']
+        false = ['false', 'off', '0', 'none', 'null']
         return type(self.opts['unidirectional']) is str and self.opts['unidirectional'].lower() not in false
 
     @property
@@ -63,6 +63,14 @@ class PySync(object):
     @property
     def unidirectional_strict(self):
         return isinstance(self.opts['unidirectional'], str) and self.opts['unidirectional'].lower() == 'strict'
+
+    @property
+    def direction(self):
+        if self.unidirectional:
+            if self.unidirectional_strict:
+                return u'unidirectional (strict)'
+            return u'unidirectional'
+        return u'bidirectional'
 
     @property
     def sync(self): return self._sync['map']
@@ -503,7 +511,7 @@ def unlock(relation, opts, _logger):
         logger.warning('Lockfile %s for relation [%s] not found!' % (lck_file, relation))
         return False
 
-def check_sync_map(relation, left, right, relation_opts, logger):
+def check_sync_map(relation, direction, left, right, relation_opts, logger):
 
     remove = []
 
@@ -538,9 +546,12 @@ def check_sync_map(relation, left, right, relation_opts, logger):
                 del(relation_opts['sync']['map'][sid])
 
     relation_opts['sync']['relation'] = relation
+    relation_opts['sync']['direction'] = direction
+    relation_opts['sync']['count'] = len(relation_opts['sync']['map'])
+    relation_opts['sync']['time'] = strflocal()
+    relation_opts['sync']['utc'] = int(time.time() * 1000)
     relation_opts['sync']['left'] = left.options.signature
     relation_opts['sync']['right'] = right.options.signature
-    relation_opts['sync']['time'] = strflocal()
 
     with codecs.open(relation_opts['map'], 'w', encoding='utf-8') as fp:
         json.dump(relation_opts['sync'], fp, indent=4, ensure_ascii=False, encoding='utf-8')
@@ -651,7 +662,8 @@ def main():
 
                 if opts['update']:
                     try:
-                        relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).update(opts['update'])
+                        pysync = PySync(left, right, relation_opts, opts.logger)
+                        relation_opts['sync'] = pysync.update(opts['update'])
                     except Exception as e:
                         logger.exception('Unexpected error when processing update option! Skipping sync for [%s]' % relation)
                         unlock(relation, relation_opts, opts.logger)
@@ -659,10 +671,11 @@ def main():
 
                 if opts.reset:
                     try:
-                        relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).reset(opts.reset)
+                        pysync = PySync(left, right, relation_opts, opts.logger)
+                        relation_opts['sync'] = pysync.reset(opts.reset)
                     except Exception as e:
                         logger.exception('Unexpected error when processing reset option!')
-                        check_sync_map(relation, left, right, relation_opts, logger)
+                        check_sync_map(relation, pysync.direction, left, right, relation_opts, logger)
                         continue
 
                 if opts.rebuild:
@@ -690,20 +703,21 @@ def main():
                     continue
 
             try:
-                relation_opts['sync'] = PySync(left, right, relation_opts, opts.logger).process()
+                pysync = PySync(left, right, relation_opts, opts.logger)
+                relation_opts['sync'] = pysync.process()
             except Exception as e:
                 logger.exception('Unexpected error when processing sync map!')
-                check_sync_map(relation, left, right, relation_opts, logger)
+                check_sync_map(relation, pysync.direction, left, right, relation_opts, logger)
                 continue
 
             # check/modify sync map by backend engine
             relation_opts = left.commit_sync('left', relation_opts, logger)
             relation_opts = right.commit_sync('right', relation_opts, logger)
-            count, errors = check_sync_map(relation, left, right, relation_opts, logger)
+            count, errors = check_sync_map(relation, pysync.direction, left, right, relation_opts, logger)
             unlock(relation, relation_opts, logger)
             logger.info(u'%s: %s %s' % (relation, left.label, left._changes))
             logger.info(u'%s: %s %s' % (relation, right.label, right._changes))
-            logger.info(u'%s: finished sync for %d items with %d errors' % (relation, count, errors))
+            logger.info(u'%s: finished %s sync for %d items with %d errors' % (relation, pysync.direction, count, errors))
 
 
             left_opts['class'].end_session(logger)
