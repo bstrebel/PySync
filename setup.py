@@ -16,6 +16,6 @@ setup(
     author_email='b.strebel@digitec.de',
     description='Python Sync Engine',
     long_description=open('README.md').read(),
-    install_requires=['PyUtils', 'OxAPI', 'EvernoteAPI', 'ToodledoAPI'],
+    #install_requires=['PyUtils', 'OxAPI', 'EvernoteAPI', 'ToodledoAPI'],
     entry_points={'console_scripts': ['pysync = pysync.core:main']}
 )
