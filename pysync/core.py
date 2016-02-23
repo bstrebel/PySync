@@ -624,13 +624,16 @@ def main():
             # and initialize sync engine classes
             try:
                 label = left_opts.get('label')
+                session_lockfile = left_opts.get('session_lockfile', True)
                 left_session = left_opts['class'].session(left_opts, opts.logger)
                 label = right_opts.get('label')
+                session_lockfile = right_opts.get('session_lockfile', True)
                 right_session = right_opts['class'].session(right_opts, opts.logger)
             except Exception as e:
                 # TODO: check exception type, unlock() only in case of an temp. network error etc.
                 logger.exception('Session initialization for [%s] failed! Skipping sync for [%s]' % (label, relation))
-                # unlock(relation, relation_opts, opts.logger)
+                if not session_lockfile:
+                    unlock(relation, relation_opts, opts.logger)
                 continue
 
             # initialize sync map
@@ -652,12 +655,15 @@ def main():
                 right_opts.update({'signature': relation_opts['sync']['right']})
 
                 try:
+                    engine_lockfile = left_opts.get('engine_lockfile', True)
                     left = left_opts['class'](left_session, left_opts, logger=opts.logger)
+                    engine_lockfile = right_opts.get('engine_lockfile', True)
                     right = right_opts['class'](right_session, right_opts, logger=opts.logger)
                 except Exception as e:
                     # TODO: check exception type, unlock() only in case of an temp. network error etc.
                     logger.exception('Engine initialization for [%s] failed! Skipping sync for [%s]' % (label, relation))
-                    # unlock(relation, relation_opts, opts.logger)
+                    if not engine_lockfile:
+                        unlock(relation, relation_opts, opts.logger)
                     continue
 
                 if opts['update']:
